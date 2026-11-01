@@ -1,0 +1,1772 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b4d23">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="LCB Training">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-32.png">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+</head>
+<body><title>Kraftaufbau Wurf</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: eine Spalte, Handy zuerst; oben Bereichswahl (Kraft · Wurf · Tests), unten die Tabs des Bereichs */
+:root {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --ink: #16202a;
+  --muted: #5b6875;
+  --line: #d5dbe2;
+  --accent: #c8322b;      /* Hantelscheibe rot */
+  --accent-ink: #ffffff;
+  --test: #1f58b8;        /* Hantelscheibe blau: Tests, Wettkämpfe */
+  --good: #23824a;
+  --warn: #b26a00;
+  --chip: #e3e8ee;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f151b; --surface: #18212a; --ink: #e7ecf1; --muted: #93a1ae; --line: #2a3742;
+    --accent: #ef5a4f; --accent-ink: #1a0b0a; --test: #6f9ff0; --good: #4fc282; --warn: #e3a23d; --chip: #23303b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f151b; --surface: #18212a; --ink: #e7ecf1; --muted: #93a1ae; --line: #2a3742;
+  --accent: #ef5a4f; --accent-ink: #1a0b0a; --test: #6f9ff0; --good: #4fc282; --warn: #e3a23d; --chip: #23303b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.4; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+
+.wrap { max-width: 640px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 12px 110px; display: grid; gap: 14px; }
+header.top { display: grid; gap: 10px; }
+.titlerow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.titlerow h1 { font-family: var(--font-display); font-weight: 700; font-size: 1.7rem; letter-spacing: .01em; margin: 0; text-transform: uppercase; }
+.status { font-size: .8rem; color: var(--muted); }
+.status.local { color: var(--warn); }
+.gear { min-height: 40px; min-width: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-weight: 600; padding: 0 10px; }
+.gear[aria-pressed=true] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.sect { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.sect button { border: 0; background: transparent; min-height: 46px; padding: 0 2px; font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); cursor: pointer; }
+.sect button + button { border-left: 1px solid var(--line); }
+.sect button[aria-pressed=true] { background: var(--ink); color: var(--bg); }
+
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-transform: uppercase; letter-spacing: .04em; margin: 0; }
+.label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 12px; min-width: 0; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.grow { flex: 1 1 auto; min-width: 0; }
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+
+input[type=text], input[type=number], input[type=date], select, textarea {
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-height: 46px; width: 100%;
+}
+input:focus-visible, select:focus-visible, button:focus-visible, textarea:focus-visible, tr.click:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 10px 14px; min-height: 46px; cursor: pointer; font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.sm { min-height: 36px; padding: 6px 10px; font-size: .9rem; }
+
+.date-row { display: grid; grid-template-columns: 46px 1fr 46px; gap: 8px; }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.chips.wrapchips { flex-wrap: wrap; overflow: visible; }
+.chip { flex: 0 0 auto; border: 1px solid var(--line); background: var(--chip); border-radius: 999px; padding: 8px 14px; min-height: 40px; cursor: pointer; white-space: nowrap; font-weight: 500; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed=true] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip.hint { background: transparent; border-style: dashed; }
+
+.quick { font-family: var(--font-display); font-size: 1.8rem !important; font-weight: 600; letter-spacing: .03em; min-height: 58px !important; }
+.unitbox { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
+.unitbox .u { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; color: var(--muted); }
+.keys { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.keys button { min-height: 44px; border-radius: 8px; border: 1px solid var(--line); background: var(--chip); font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; cursor: pointer; }
+
+.ref { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+.big { font-family: var(--font-display); font-size: 2.2rem; font-weight: 700; line-height: 1; }
+.src { font-size: .8rem; color: var(--muted); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+
+table.sets { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+table.sets th { text-align: right; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+table.sets td { text-align: right; padding: 9px 6px; border-bottom: 1px solid var(--line); }
+table.sets th:first-child, table.sets td:first-child { text-align: left; }
+table.sets tr.click { cursor: pointer; }
+table.sets tr.click:hover td { background: var(--bg); }
+table.sets tr.sel td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.tbl { overflow-x: auto; }
+
+.pct { display: inline-block; min-width: 3.2em; padding: 2px 6px; border-radius: 6px; font-weight: 600; text-align: center; }
+.z1 { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+.z2 { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
+.z3 { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.dash { color: var(--muted); }
+
+.edit-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.edit-grid label, .form label { display: grid; gap: 4px; font-size: .8rem; color: var(--muted); }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 10px; }
+.pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-weight: 600; font-size: .85rem; }
+.pill.speed { background: color-mix(in srgb, var(--test) 16%, transparent); color: var(--test); }
+.pill.strength { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.pill.balanced { background: color-mix(in srgb, var(--good) 16%, transparent); color: var(--good); }
+.note { font-size: .82rem; color: var(--muted); line-height: 1.45; }
+details > summary { cursor: pointer; font-weight: 600; }
+details[open] > summary { margin-bottom: 8px; }
+.blin { width: 7.5em !important; min-height: 40px !important; padding: 6px 8px !important; text-align: right; }
+.legend i.c2 { background: var(--test); } .legend i.c3 { background: var(--good); } .legend i.c4 { background: var(--warn); }
+.legend i.b { height: 10px; background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.legend i.r { background: none; border-top: 2px dotted var(--test); height: 0; }
+.chip.c1[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip.c2[aria-pressed=true] { background: var(--test); border-color: var(--test); color: var(--surface); }
+.chip.c3[aria-pressed=true] { background: var(--good); border-color: var(--good); color: var(--surface); }
+.chip.c4[aria-pressed=true] { background: var(--warn); border-color: var(--warn); color: var(--surface); }
+.kpi { display: grid; gap: 2px; min-width: 0; }
+.kpi .v { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; line-height: 1.05; }
+.kpi .s { font-size: .8rem; color: var(--muted); }
+.up { color: var(--good); } .down { color: var(--accent); }
+
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 8px 12px; min-height: 40px; cursor: pointer; font-weight: 600; }
+.seg button[aria-pressed=true] { background: var(--ink); color: var(--bg); }
+
+.chart { width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); }
+.legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; background: var(--accent); }
+.legend i.t { width: 9px; height: 9px; background: var(--test); transform: rotate(45deg); }
+.legend i.d { background: none; border-top: 2px dashed var(--muted); height: 0; }
+
+.ex-list { display: grid; gap: 0; }
+.ex-item { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.ex-item:last-child { border-bottom: 0; }
+.badge { font-size: .72rem; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+.badge.comp { background: color-mix(in srgb, var(--test) 18%, transparent); color: var(--test); }
+.form { display: grid; gap: 10px; }
+.form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.check { display: flex !important; grid-auto-flow: column; align-items: center; gap: 8px !important; font-size: .95rem !important; color: var(--ink) !important; }
+.check input { width: 22px; height: 22px; }
+
+.empty { text-align: center; padding: 20px 10px; display: grid; gap: 10px; justify-items: center; }
+.err { color: var(--accent); font-size: .9rem; }
+.ok { color: var(--good); }
+
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); z-index: 5; }
+nav.tabs button { border: 0; background: transparent; min-height: 58px; font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); cursor: pointer; border-top: 3px solid transparent; }
+nav.tabs button[aria-current=page] { color: var(--ink); border-top-color: var(--accent); }
+
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(72px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-weight: 600; z-index: 6; max-width: calc(100% - 32px); }
+textarea.out { font-family: ui-monospace, Consolas, monospace; font-size: .75rem; min-height: 140px; }
+@media (max-width: 420px) { .edit-grid { grid-template-columns: 1fr 1fr; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="titlerow">
+      <div><h1 id="h1">Kraft</h1><span id="status" class="status">Daten werden geladen …</span></div>
+      <button class="gear" id="gear" aria-pressed="false" aria-label="Daten und Einstellungen">Daten</button>
+    </div>
+    <div class="sect" role="group" aria-label="Bereich">
+      <button data-sec="kraft">Kraft</button>
+      <button data-sec="wurf">Wurf</button>
+      <button data-sec="tests">Tests</button>
+      <button data-sec="prog">Prognose</button>
+    </div>
+  </header>
+  <main id="view"></main>
+</div>
+<nav class="tabs" id="tabs" aria-label="Ansicht"></nav>
+<div id="toast" class="toast" hidden></div>
+
+<script src="calc.js"></script>
+<script src="hammer.js"></script>
+<script>
+'use strict';
+const C = window.Calc;
+const HM = window.Hammer;
+
+// ---------- Startdaten Kraft (SPEC §7) ----------
+const DEFAULT_EXERCISES = [
+  ['Front Squats', 'reps', false], ['Reisskniebeugen', 'reps', false], ['Beinpresse (Knie hoch)', 'reps', false],
+  ['Bankziehen', 'reps', false], ['Rudern am Kabelzug', 'reps', false], ['Latzug', 'reps', false],
+  ['Step-Ups', 'reps', true], ['Ausfallschritte mit Kurzhanteln', 'reps', true, 'kg pro Hand'],
+  ['Anreissen', 'tested_only', false], ['Schwere Züge (Zug 1 – Umsetzen)', 'tested_only', false],
+  ['Hex Bar Jumps', 'load_only', false], ['Strecksprünge mit Kurzhanteln', 'load_only', false, 'kg pro Hand'],
+];
+const MODE_LABEL = { reps: '1RM aus Wdh', tested_only: 'nur Test-1RM', load_only: 'nur Last' };
+const SECTIONS = {
+  kraft: { title: 'Kraft', tabs: [['capture', 'Erfassen'], ['history', 'Verlauf'], ['best', 'Bestwerte'], ['exercises', 'Übungen']] },
+  wurf: { title: 'Wurf', tabs: [['capture', 'Erfassen'], ['history', 'Verlauf'], ['best', 'Bestwerte']] },
+  tests: { title: 'Tests', tabs: [['capture', 'Erfassen'], ['history', 'Verlauf'], ['best', 'Bestwerte']] },
+  prog: { title: 'Prognose', tabs: [['forecast', 'Prognose'], ['compare', 'Vergleich']] },
+  data: { title: 'Daten', tabs: [] },
+};
+
+// ---------- Hilfen ----------
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const fmt = (x, d = 1) => x == null ? '–' : (Math.round(x * 10 ** d) / 10 ** d).toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: d });
+const f2 = (x) => x == null ? '–' : Number(x).toFixed(2);
+const kg = (x) => x == null ? '–' : fmt(x, 1) + ' kg';
+const num = (v) => Number(String(v ?? '').trim().replace(',', '.'));
+function todayIso() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function dateLabel(iso) {
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('de-CH', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · KW ' + C.isoWeek(iso).week;
+}
+const shortDate = (iso) => new Date(iso + 'T12:00').toLocaleDateString('de-CH', { day: 'numeric', month: 'numeric', year: '2-digit' });
+function defaultSeasonStart() { const t = todayIso(); const y = Number(t.slice(0, 4)); return (Number(t.slice(5, 7)) >= 10 ? y : y - 1) + '-10-01'; }
+function pctBadge(p) {
+  if (p == null) return '<span class="dash">–</span>';
+  const z = p >= 85 ? 'z3' : p >= 70 ? 'z2' : 'z1';
+  return `<span class="pct ${z}">${p} %</span>`;
+}
+let toastTimer;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2200); }
+
+// Wurf / Tests
+const massLabel = (m) => (Number.isInteger(m) ? m : String(m)) + ' kg';
+const wireLabel = (id) => (C.WIRES.find((w) => w.id === id) || C.WIRES[0]).label;
+const comboKey = (mass, wire) => mass + '|' + wire;
+const testDef = (id) => C.TESTS.find((t) => t.id === id);
+const resultKey = (testId, shot) => testId + '|' + (shot || '');
+function resultName(testId, shot) { const t = testDef(testId); return (t ? t.name : testId) + (shot ? ' ' + massLabel(shot) : ''); }
+
+// ---------- Vergleichswerte (datumsunabhängige Bestleistungen) ----------
+const blId = {
+  kraft: (exId) => 'k_' + exId,
+  wurf: (mass, wire) => 'w_' + mass + '_' + wire,
+  test: (testId, shot) => 't_' + testId + (shot ? '_' + shot : ''),
+};
+function baselineVal(id) { const b = S.baselines.find((x) => x.id === id); return b && b.value > 0 ? b.value : null; }
+
+/** Bestleistung = besserer Wert aus Vergleichswert und erfassten Daten. */
+function kraftPB(ex) {
+  let best = null;
+  const take = (value, source, date) => { if (value > 0 && (!best || value > best.value)) best = { value, source, date }; };
+  take(baselineVal(blId.kraft(ex.id)), 'Vergleichswert', null);
+  for (const t of S.tests) if (t.exerciseId === ex.id) take(t.weightKg, 'Test', t.date);
+  for (const s of S.sets) {
+    if (s.exerciseId !== ex.id) continue;
+    if (ex.mode === 'reps') take(C.setE1rm(s, ex), 'e1RM', s.date);
+    else if (ex.mode === 'load_only') take(s.weightKg, 'Training', s.date);
+  }
+  return best;
+}
+function throwPB(mass, wire) {
+  let best = null;
+  const bl = baselineVal(blId.wurf(mass, wire));
+  if (bl) best = { value: bl, source: 'Vergleichswert', date: null };
+  for (const t of S.throws) if (t.massKg === mass && t.wire === wire && (!best || t.distanceM > best.value)) best = { value: t.distanceM, source: t.isCompetition ? 'Wettkampf' : 'Training', date: t.date };
+  return best;
+}
+function testPB(testId, shot) {
+  const t = testDef(testId); let best = null;
+  const bl = baselineVal(blId.test(testId, t.shot ? shot : null));
+  if (bl) best = { value: bl, source: 'Vergleichswert', date: null };
+  for (const r of S.results) {
+    if (r.testId !== testId || (t.shot && r.shotKg !== shot)) continue;
+    if (!best || C.isBetter(r.value, best.value, t.lowerBetter)) best = { value: r.value, source: 'Test', date: r.date };
+  }
+  return best;
+}
+const pbSrc = (pb) => !pb ? 'noch kein Wert' : pb.source === 'Vergleichswert' ? 'Vergleichswert (ohne Datum)' : pb.source + ' · ' + shortDate(pb.date);
+
+// ---------- Speicher ----------
+// Drei Wege, gleiche Schnittstelle (put/del/saveProfile):
+//  · claude.ai-Artifact: claude db (privat pro Person, live)
+//  · eigene Web-App: Supabase mit Login; Änderungen gehen zuerst in eine lokale Warteschlange (offline im Kraftraum)
+//  · sonst: nur dieser Browser
+const KINDS = ['exercises', 'sets', 'tests', 'throws', 'results', 'baselines'];
+const S = { exercises: [], sets: [], tests: [], throws: [], results: [], baselines: [], profile: {}, mode: 'loading', athleteId: 'local', loaded: {} };
+let storeKey = 'kraftaufbau-v1';
+let backend = null; // { put(kind, obj), del(kind, id), profile(p) } – wirft bei Fehlern
+
+function localLoad() {
+  try { const raw = localStorage.getItem(storeKey); if (raw) { const d = JSON.parse(raw); for (const k of KINDS) S[k] = d[k] || []; S.profile = d.profile || {}; } } catch (e) { /* ohne Speicher weiter */ }
+  for (const k of KINDS) S.loaded[k] = true;
+}
+function localSave() {
+  try { const d = { profile: S.profile }; for (const k of KINDS) d[k] = S[k]; localStorage.setItem(storeKey, JSON.stringify(d)); } catch (e) { toast('Lokales Speichern nicht möglich'); }
+}
+
+async function put(kind, obj) {
+  const list = S[kind]; const i = list.findIndex((x) => x.id === obj.id);
+  if (i >= 0) list[i] = obj; else list.push(obj);
+  if (backend) {
+    try { await backend.put(kind, JSON.parse(JSON.stringify(obj))); }
+    catch (e) { toast(e && e.code === 'quota_exceeded' ? 'Speicher voll – alte Einträge löschen' : 'Speichern fehlgeschlagen – bitte erneut versuchen'); throw e; }
+  } else localSave();
+}
+async function del(kind, id) {
+  S[kind] = S[kind].filter((x) => x.id !== id);
+  if (backend) { try { await backend.del(kind, id); } catch (e) { toast('Löschen fehlgeschlagen'); throw e; } }
+  else localSave();
+}
+async function saveProfile(patch) {
+  S.profile = { ...S.profile, ...patch };
+  if (backend) { try { await backend.profile({ ...S.profile }); } catch (e) { toast('Speichern fehlgeschlagen'); } }
+  else localSave();
+}
+
+function setStatus() {
+  const el = $('#status');
+  const n = sbQueue.length;
+  const set = (t, warn) => { el.textContent = t; el.className = 'status' + (warn ? ' local' : ''); };
+  if (S.mode === 'remote') set('Gespeichert in deinem Konto');
+  else if (S.mode === 'sb') set(n ? n + ' Änderung' + (n === 1 ? '' : 'en') + ' werden übertragen …' : 'Synchronisiert');
+  else if (S.mode === 'sb-sync') set('Wird synchronisiert …');
+  else if (S.mode === 'sb-offline') set(n ? 'Offline · ' + n + ' Änderung' + (n === 1 ? '' : 'en') + ' warten' : 'Offline · zuletzt geladene Daten', true);
+  else if (S.mode === 'login') set('');
+  else if (S.mode === 'local') set('Nur in diesem Browser gespeichert', true);
+  else if (S.mode === 'slow') set('Daten noch nicht erreichbar …', true);
+  else set('Daten werden geladen …');
+}
+
+// ----- Supabase (eigene Web-App) -----
+let sb = null, sbUser = null, sbQueue = [], sbSyncing = false, sbQueueKey = '';
+const sbQueueSave = () => { try { localStorage.setItem(sbQueueKey, JSON.stringify(sbQueue)); } catch (e) { /* egal */ } };
+function sbEnqueue(op) {
+  sbQueue = sbQueue.filter((q) => !(q.kind === op.kind && q.id === op.id));
+  sbQueue.push(op); sbQueueSave(); localSave();
+  sbFlush().then(() => setStatus());
+}
+let sbFlushing = null;
+function sbFlush() { // nur eine Übertragung gleichzeitig; neu Eingereihtes wird in derselben Runde mitgenommen
+  if (!sbFlushing) sbFlushing = sbFlushRun().finally(() => { sbFlushing = null; });
+  return sbFlushing;
+}
+async function sbFlushRun() {
+  while (sbQueue.length) {
+    const op = sbQueue[0];
+    let res;
+    try {
+      res = op.t === 'put'
+        ? await sb.from('entries').upsert({ user_id: sbUser.id, kind: op.kind, id: op.id, data: op.data, updated_at: new Date().toISOString() }, { onConflict: 'user_id,kind,id' })
+        : await sb.from('entries').delete().match({ kind: op.kind, id: op.id });
+    } catch (e) { res = { error: e }; }
+    if (res.error) { S.mode = 'sb-offline'; return false; }
+    sbQueue = sbQueue.filter((q) => q !== op); sbQueueSave();
+  }
+  if (S.mode === 'sb-offline') S.mode = 'sb';
+  return true;
+}
+async function sbFetchAll() {
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await sb.from('entries').select('kind,id,data').order('kind').order('id').range(from, from + 999);
+    if (error) throw error;
+    rows.push(...data);
+    if (data.length < 1000) return rows;
+  }
+}
+async function sbSync() {
+  if (sbSyncing || !sbUser) return;
+  sbSyncing = true; S.mode = 'sb-sync'; setStatus();
+  try {
+    if (await sbFlush()) {
+      const rows = await sbFetchAll();
+      const next = { profile: {} }; for (const k of KINDS) next[k] = [];
+      for (const r of rows) {
+        if (r.kind === 'profile') next.profile = r.data || {};
+        else if (next[r.kind]) next[r.kind].push({ ...r.data, id: r.id });
+      }
+      for (const k of KINDS) S[k] = next[k];
+      S.profile = next.profile;
+      for (const op of sbQueue) { // während des Ladens neu Erfasstes obendrauf
+        if (op.kind === 'profile') { if (op.t === 'put') S.profile = op.data; continue; }
+        S[op.kind] = S[op.kind].filter((x) => x.id !== op.id);
+        if (op.t === 'put') S[op.kind].push({ ...op.data, id: op.id });
+      }
+      localSave();
+      S.mode = 'sb';
+    }
+  } catch (e) { S.mode = 'sb-offline'; }
+  sbSyncing = false; setStatus(); onData();
+}
+async function sbStart(user) {
+  sbUser = user; S.athleteId = user.id;
+  storeKey = 'lcb-cache-' + user.id; sbQueueKey = 'lcb-queue-' + user.id;
+  localLoad();
+  try { sbQueue = JSON.parse(localStorage.getItem(sbQueueKey) || '[]'); } catch (e) { sbQueue = []; }
+  backend = {
+    put: async (kind, obj) => { const { id, ...data } = obj; sbEnqueue({ t: 'put', kind, id, data }); },
+    del: async (kind, id) => sbEnqueue({ t: 'del', kind, id }),
+    profile: async (p) => sbEnqueue({ t: 'put', kind: 'profile', id: 'profile', data: p }),
+  };
+  S.mode = 'sb-sync'; setStatus(); render();
+  await sbSync();
+  window.addEventListener('online', sbSync);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') sbSync(); });
+}
+async function initSupabase(cfg) {
+  sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true } });
+  let session = null;
+  try { session = (await sb.auth.getSession()).data.session; } catch (e) { session = null; }
+  if (session) return sbStart(session.user);
+  // Offline und abgemeldet geht nicht – sonst Login zeigen
+  S.mode = 'login'; setStatus(); render();
+}
+async function sbLogin(signup) {
+  const email = $('#l-mail').value.trim(), password = $('#l-pw').value;
+  if (!email || password.length < 8) { ui.loginMsg = 'Bitte E-Mail und ein Passwort mit mindestens 8 Zeichen eingeben.'; render(); return; }
+  ui.loginMsg = signup ? 'Konto wird erstellt …' : 'Anmelden …'; render();
+  const { data, error } = signup ? await sb.auth.signUp({ email, password }) : await sb.auth.signInWithPassword({ email, password });
+  if (error) { ui.loginMsg = /invalid login/i.test(error.message) ? 'E-Mail oder Passwort stimmt nicht.' : /confirm/i.test(error.message) ? 'Bitte zuerst den Link in der Bestätigungs-E-Mail öffnen, dann hier anmelden.' : error.message; render(); return; }
+  if (!data.session) { ui.loginMsg = 'Konto erstellt. Öffne den Link in der Bestätigungs-E-Mail und melde dich danach hier an.'; render(); return; }
+  ui.loginMsg = ''; sbStart(data.session.user);
+}
+async function sbLogout() {
+  if (sbQueue.length) { toast('Es warten noch Änderungen – erst mit Internet synchronisieren'); return; }
+  await sb.auth.signOut();
+  try { localStorage.removeItem(storeKey); localStorage.removeItem(sbQueueKey); } catch (e) { /* egal */ }
+  location.reload();
+}
+function renderLogin() {
+  return `<section class="card">
+    <h2>Anmelden</h2>
+    <p class="note">Deine Trainingsdaten liegen in deinem Konto und sind auf iPhone und PC gleich. Melde dich einmal pro Gerät an.</p>
+    <form id="lform" class="form" autocomplete="on">
+      <label>E-Mail<input type="email" id="l-mail" autocomplete="username" inputmode="email" required></label>
+      <label>Passwort<input type="password" id="l-pw" autocomplete="current-password" minlength="8" required></label>
+      <button class="btn primary" type="submit">Anmelden</button>
+      <button class="btn ghost" type="button" data-act="signup">Neues Konto erstellen</button>
+    </form>
+    ${ui.loginMsg ? `<p class="small">${esc(ui.loginMsg)}</p>` : ''}
+  </section>`;
+}
+
+async function initStore() {
+  if (window.APP_CONFIG && window.supabase && !(window.claude && window.claude.use)) return initSupabase(window.APP_CONFIG);
+  let db = null, user = null;
+  try { if (window.claude && window.claude.use) [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); } catch (e) { /* lokal */ }
+  let id = null;
+  try { id = user ? await user.id() : null; } catch (e) { id = null; }
+  if (!db || !id) { S.mode = 'local'; localLoad(); setStatus(); render(); return; }
+  S.athleteId = id;
+  const remote = { base: db.doc('data/users/' + id + '/profile') };
+  backend = {
+    put: (kind, obj) => remote.base.collection(kind).doc(obj.id).set(obj),
+    del: (kind, id2) => remote.base.collection(kind).doc(id2).delete(),
+    profile: (p) => remote.base.set(p),
+  };
+  const slow = setTimeout(() => { if (S.mode === 'loading') { S.mode = 'slow'; setStatus(); } }, 10000);
+  const done = () => { if (KINDS.every((k) => S.loaded[k])) { clearTimeout(slow); S.mode = 'remote'; setStatus(); } };
+  for (const k of KINDS) {
+    remote.base.collection(k).onSnapshot((snap) => {
+      S[k] = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+      if (!snap.metadata.fromCache) { S.loaded[k] = true; done(); }
+      onData();
+    }, () => { S.loaded[k] = true; done(); onData(); });
+  }
+  remote.base.onSnapshot((snap) => { S.profile = snap.exists ? { ...snap.data() } : {}; onData(); }, () => {});
+}
+
+// ---------- UI-Zustand ----------
+const ui = {
+  section: 'kraft', tabs: { kraft: 'capture', wurf: 'capture', tests: 'capture', prog: 'forecast' },
+  cmp: null, cmpNorm: 'pb', blCombos: [],
+  date: todayIso(), exId: null, quick: '', editSet: null, confirmDel: null, editRow: null,
+  showTest: false, histEx: null, range: '8w', editEx: null, newEx: false, exportText: '', importMsg: '', showArchived: false,
+  mass: 7.26, wire: null, dist: '', comp: false, histCombo: null,
+  testId: 'sprint30', shot: 4, tval: '', histResult: null, loginMsg: '',
+};
+try {
+  const n = JSON.parse(localStorage.getItem('trainingsapp-nav') || 'null');
+  if (n && SECTIONS[n.section]) { ui.section = n.section; Object.assign(ui.tabs, n.tabs || {}); }
+} catch (e) { /* egal */ }
+function saveNav() { try { localStorage.setItem('trainingsapp-nav', JSON.stringify({ section: ui.section, tabs: ui.tabs })); } catch (e) { /* egal */ } }
+const curTab = () => ui.tabs[ui.section];
+
+const activeEx = () => S.exercises.filter((e) => !e.archived).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+const exById = (id) => S.exercises.find((e) => e.id === id);
+function lastUsed(exId) { let d = ''; for (const s of S.sets) if (s.exerciseId === exId && s.date > d) d = s.date; for (const t of S.tests) if (t.exerciseId === exId && t.date > d) d = t.date; return d; }
+function exByRecent() { return activeEx().sort((a, b) => (lastUsed(b.id) || '').localeCompare(lastUsed(a.id) || '') || a.name.localeCompare(b.name, 'de')); }
+function currentEx() {
+  let ex = exById(ui.exId);
+  if (!ex || ex.archived) { ex = exByRecent()[0] || null; ui.exId = ex ? ex.id : null; }
+  return ex;
+}
+const allLoaded = () => KINDS.every((k) => S.loaded[k]);
+
+function onData() {
+  if (ui.section === 'kraft' && curTab() === 'capture' && $('#quick')) refreshCapture();
+  else render();
+}
+
+function dateRow() {
+  return `<div class="date-row">
+      <button class="btn" data-act="day" data-d="-1" aria-label="Vorheriger Tag">‹</button>
+      <input type="date" id="date" value="${esc(ui.date)}" aria-label="Datum">
+      <button class="btn" data-act="day" data-d="1" aria-label="Nächster Tag">›</button>
+    </div>`;
+}
+function rangeSeg() {
+  return `<div class="seg" role="group" aria-label="Zeitraum">
+    ${[['8w', '8 Wochen'], ['season', 'Saison'], ['all', 'Alles']].map(([k, l]) => `<button data-act="range" data-r="${k}" aria-pressed="${ui.range === k}">${l}</button>`).join('')}</div>`;
+}
+function rangeFrom(firstIdx) {
+  const nowW = C.isoWeek(todayIso()).index;
+  if (ui.range === '8w') return nowW - 7;
+  if (ui.range === 'season') return C.isoWeek(S.profile.seasonStart || defaultSeasonStart()).index;
+  return firstIdx ?? nowW;
+}
+const delLabel = (id) => ui.confirmDel === id ? 'Wirklich löschen?' : 'Löschen';
+
+// ================= KRAFT =================
+function seedCard() {
+  if (!allLoaded()) return `<div class="card empty"><p class="muted">Deine Übungen werden geladen …</p></div>`;
+  return `<div class="card empty">
+    <h2>Noch keine Übungen</h2>
+    <p class="muted small">Leg die 12 Übungen aus dem Wochenplan Herbst 2025 und dem Sonntagskrafttraining an. Du kannst sie danach unter «Übungen» anpassen.</p>
+    <button class="btn primary" data-act="seed">12 Übungen anlegen</button>
+  </div>`;
+}
+
+function renderCapture() {
+  if (!S.exercises.length) return seedCard();
+  return `
+  <section class="card">
+    ${dateRow()}
+    <div id="chips" class="chips" role="group" aria-label="Übung"></div>
+  </section>
+  <section class="card">
+    <div id="refbox"></div>
+    <form id="qform" class="form" autocomplete="off">
+      <label for="quick" class="label">Schnelleingabe</label>
+      <input type="text" id="quick" class="quick" inputmode="decimal" placeholder="5x5x80" value="${esc(ui.quick)}" autocapitalize="off" spellcheck="false">
+      <div class="keys">
+        <button type="button" data-key="x">×</button><button type="button" data-key="/">/</button>
+        <button type="button" data-key="@">@</button><button type="button" data-key="+">+</button>
+        <button type="button" data-key="back" aria-label="Löschen">⌫</button>
+      </div>
+      <div id="hints" class="chips"></div>
+      <div id="preview"></div>
+    </form>
+  </section>
+  <section class="card">
+    <div class="row"><h2 class="grow">Sätze am ${esc(dateLabel(ui.date))}</h2></div>
+    <div id="daylist"></div>
+    <div class="row">
+      <button class="btn" data-act="toggleTest">Getestetes 1RM eintragen</button>
+    </div>
+    <div id="testform"></div>
+  </section>`;
+}
+
+function refreshCapture() {
+  if (!$('#quick')) return render();
+  const ex = currentEx();
+  $('#chips').innerHTML = exByRecent().map((e) => `<button class="chip" data-act="pickEx" data-id="${e.id}" aria-pressed="${e.id === (ex && ex.id)}">${esc(e.name)}</button>`).join('');
+  renderRefBox(); renderHints(); renderPreview(); renderDayList(); renderTestForm();
+}
+
+function sessionWith(ex, extra) { return S.sets.filter((s) => s.exerciseId === ex.id).concat(extra || []); }
+
+function renderRefBox() {
+  const ex = currentEx(); const box = $('#refbox'); if (!ex) { box.innerHTML = ''; return; }
+  const meta = [MODE_LABEL[ex.mode], ex.unilateral ? 'Wdh je Seite' : '', ex.loadNote || ''].filter(Boolean).join(' · ');
+  if (ex.mode === 'load_only') {
+    box.innerHTML = `<div class="ref"><div><div class="label">${esc(ex.name)}</div><div class="src">${esc(meta)} – kein 1RM-Bezug</div></div></div>`;
+    return;
+  }
+  const preview = C.parseQuick(ui.quick).sets.map((s) => ({ ...s, exerciseId: ex.id, date: ui.date }));
+  const ref = C.refMax(ex, ui.date, sessionWith(ex, preview), S.tests, baselineVal(blId.kraft(ex.id)));
+  const srcTxt = !ref ? (ex.mode === 'tested_only' ? 'Noch kein getestetes 1RM vor diesem Tag – Vergleichswert unter «Bestwerte» eintragen' : 'Noch kein 1RM – erfasse Sätze mit höchstens 10 Wdh oder trag unter «Bestwerte» einen Vergleichswert ein')
+    : ref.source === 'test' ? 'getestet am ' + new Date(ref.date + 'T12:00').toLocaleDateString('de-CH')
+    : ref.source === 'e1rm28' ? 'geschätzt, bestes e1RM der letzten 28 Tage'
+    : ref.source === 'baseline' ? 'Vergleichswert (keine aktuellen Daten)'
+    : 'geschätzt aus dieser Einheit (keine Vorwerte)';
+  const pb = kraftPB(ex);
+  const loads = ref ? [60, 70, 75, 80, 85, 90, 95].map((p) => `<span class="badge num">${p} % · ${fmt(C.suggestLoad(p, ref.value, ex.increment), 1)}</span>`).join(' ') : '';
+  box.innerHTML = `<div class="ref"><div class="grow"><div class="label">${esc(ex.name)} · Referenz-1RM</div><div class="src">${esc(meta)}</div></div>
+    <div><span class="big num">${ref ? fmt(ref.value, 1) : '–'}</span> <span class="muted">kg</span></div></div>
+    <div class="src">${esc(srcTxt)}${pb ? ` · Bestleistung <b class="num">${fmt(pb.value)} kg</b>, ${esc(pbSrc(pb))}` : ''}</div>${loads ? `<div class="row" style="gap:6px">${loads}</div>` : ''}`;
+}
+
+function lastPattern(exId) {
+  const d = S.sets.filter((s) => s.exerciseId === exId && s.date !== ui.date).reduce((m, s) => (s.date > m ? s.date : m), '');
+  if (!d) return null;
+  const ss = S.sets.filter((s) => s.exerciseId === exId && s.date === d).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const rir = ss.every((s) => s.rir === ss[0].rir) && ss[0].rir != null ? '@' + ss[0].rir : '';
+  if (ss.every((s) => s.weightKg === ss[0].weightKg && s.reps === ss[0].reps)) return (ss.length > 1 ? ss.length + 'x' : '') + (ss.length > 1 ? ss[0].reps + 'x' + ss[0].weightKg : ss[0].weightKg + 'x' + ss[0].reps) + rir;
+  if (ss.every((s) => s.reps === ss[0].reps)) return ss.map((s) => s.weightKg).join('/') + 'x' + ss[0].reps + rir;
+  return ss.map((s) => s.weightKg + 'x' + s.reps).join('+');
+}
+
+function renderHints() {
+  const ex = currentEx(); const el = $('#hints'); if (!ex) { el.innerHTML = ''; return; }
+  const last = lastPattern(ex.id);
+  el.innerHTML = last ? `<span class="label" style="align-self:center">Letztes Mal</span><button type="button" class="chip hint" data-act="fill" data-v="${esc(last)}">${esc(last.replace(/x/g, '×'))}</button>` : '';
+}
+
+function renderPreview() {
+  const ex = currentEx(); const el = $('#preview'); if (!ex) { el.innerHTML = ''; return; }
+  const { sets, error } = C.parseQuick(ui.quick);
+  if (error) { el.innerHTML = `<p class="err">${esc(error)}</p>`; return; }
+  if (!sets.length) { el.innerHTML = `<p class="muted small">Beispiele: <b>5x5x80</b> (5 Sätze à 5 Wdh mit 80 kg) · <b>100/110/120x5</b> · <b>80x5</b> · <b>5x5x80@2</b> (2 Wdh in Reserve)</p>`; return; }
+  const draft = sets.map((s) => ({ ...s, exerciseId: ex.id, date: ui.date }));
+  const ref = C.refMax(ex, ui.date, sessionWith(ex, draft), S.tests, baselineVal(blId.kraft(ex.id)));
+  const rows = draft.map((s, i) => {
+    const e = C.setE1rm(s, ex);
+    return `<tr><td>${i + 1}</td><td>${fmt(s.weightKg)}</td><td>${s.reps}${s.rir != null ? ' @' + s.rir : ''}</td><td>${ex.mode === 'reps' ? (e == null ? '<span class="dash" title="über 10 Wdh: keine Schätzung">–</span>' : fmt(e)) : '<span class="dash">–</span>'}</td><td>${pctBadge(C.pct(s.weightKg, ref))}</td></tr>`;
+  }).join('');
+  el.innerHTML = `<div class="tbl"><table class="sets"><thead><tr><th>Satz</th><th>kg</th><th>Wdh</th><th>e1RM</th><th>% 1RM</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <button class="btn primary" type="submit">${draft.length === 1 ? '1 Satz' : draft.length + ' Sätze'} speichern</button>`;
+}
+
+function renderDayList() {
+  const el = $('#daylist');
+  const day = S.sets.filter((s) => s.date === ui.date);
+  const dayTests = S.tests.filter((t) => t.date === ui.date);
+  if (!day.length && !dayTests.length) { el.innerHTML = `<p class="muted small">An diesem Tag ist noch nichts erfasst.</p>`; return; }
+  const groups = new Map();
+  for (const s of day) { if (!groups.has(s.exerciseId)) groups.set(s.exerciseId, []); groups.get(s.exerciseId).push(s); }
+  let html = '';
+  for (const [exId, ss] of groups) {
+    const ex = exById(exId) || { id: exId, name: 'Unbekannte Übung', mode: 'load_only' };
+    ss.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.createdAt || '').localeCompare(b.createdAt || ''));
+    const ref = C.refMax(ex, ui.date, S.sets.filter((s) => s.exerciseId === ex.id), S.tests, baselineVal(blId.kraft(ex.id)));
+    const vol =ss.reduce((a, s) => a + s.weightKg * s.reps, 0) * (ex.unilateral ? 2 : 1);
+    html += `<div class="label" style="margin-top:6px">${esc(ex.name)} <span class="muted" style="text-transform:none;letter-spacing:0">· ${ss.length} Sätze · ${fmt(vol, 0)} kg Volumen${ref ? ' · Ref. ' + fmt(ref.value) + ' kg' : ''}</span></div>
+      <div class="tbl"><table class="sets"><thead><tr><th>Satz</th><th>kg</th><th>Wdh</th><th>e1RM</th><th>% 1RM</th></tr></thead><tbody>`;
+    ss.forEach((s, i) => {
+      if (ui.editSet === s.id) {
+        html += `<tr><td colspan="5"><div class="edit-grid" style="margin:6px 0">
+          <label>kg<input type="number" step="0.5" inputmode="decimal" id="e-w" value="${s.weightKg}"></label>
+          <label>Wdh<input type="number" inputmode="numeric" id="e-r" value="${s.reps}"></label>
+          <label>RIR<input type="number" inputmode="numeric" min="0" max="5" id="e-rir" value="${s.rir ?? ''}"></label></div>
+          <div class="row"><button class="btn primary sm" data-act="saveSet" data-id="${s.id}">Speichern</button><button class="btn sm" data-act="cancelEdit">Abbrechen</button>
+          <span class="grow"></span><button class="btn danger sm" data-act="delSet" data-id="${s.id}">${delLabel(s.id)}</button></div></td></tr>`;
+      } else {
+        const e = C.setE1rm(s, ex);
+        html += `<tr class="click" data-act="editSet" data-id="${s.id}" tabindex="0" title="Antippen zum Bearbeiten"><td>${i + 1}</td><td>${fmt(s.weightKg)}</td><td>${s.reps}${s.rir != null ? ' @' + s.rir : ''}</td><td>${ex.mode === 'reps' && e != null ? fmt(e) : '<span class="dash">–</span>'}</td><td>${pctBadge(C.pct(s.weightKg, ref))}</td></tr>`;
+      }
+    });
+    html += `</tbody></table></div>`;
+  }
+  for (const t of dayTests) {
+    const ex = exById(t.exerciseId);
+    html += `<div class="row small" style="margin-top:6px"><span class="badge comp">Test-1RM</span>
+      <span class="grow">${esc(ex ? ex.name : 'Übung')}: <b class="num">${kg(t.weightKg)}</b>${t.note ? ' · ' + esc(t.note) : ''}</span>
+      <button class="btn danger sm" data-act="delTest" data-id="${t.id}">${delLabel(t.id)}</button></div>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderTestForm() {
+  const el = $('#testform'); const ex = currentEx();
+  if (!ui.showTest || !ex) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="form">
+    <div class="small muted">Getestetes 1RM für <b>${esc(ex.name)}</b> am ${esc(dateLabel(ui.date))}. Es gilt ab dem Folgetag als Referenz.</div>
+    <div class="two"><label>1RM in kg<input type="number" step="0.5" inputmode="decimal" id="t-w"></label>
+    <label>Notiz<input type="text" id="t-note" placeholder="optional"></label></div>
+    <div class="row"><button class="btn primary" data-act="saveTest">Test speichern</button><button class="btn ghost" data-act="toggleTest">Abbrechen</button></div></div>`;
+  $('#t-w').focus();
+}
+
+async function saveQuick() {
+  const ex = currentEx(); if (!ex) return;
+  const { sets, error } = C.parseQuick(ui.quick);
+  if (error || !sets.length) { toast(error || 'Bitte zuerst Sätze eingeben'); return; }
+  const base = S.sets.filter((s) => s.date === ui.date && s.exerciseId === ex.id).reduce((m, s) => Math.max(m, s.order ?? 0), 0);
+  const now = new Date().toISOString();
+  const toSave = sets.map((s, i) => {
+    const o = { id: uid(), athleteId: S.athleteId, date: ui.date, exerciseId: ex.id, weightKg: s.weightKg, reps: s.reps, order: base + i + 1, createdAt: now };
+    if (s.rir != null) o.rir = s.rir;
+    return o;
+  });
+  ui.quick = ''; $('#quick').value = '';
+  for (const o of toSave) S.sets.push(o);
+  refreshCapture();
+  try {
+    if (backend) { for (const o of toSave) await backend.put('sets', o); }
+    else localSave();
+    toast(toSave.length === 1 ? '1 Satz gespeichert' : toSave.length + ' Sätze gespeichert');
+  } catch (e) { toast('Speichern fehlgeschlagen – bitte erneut versuchen'); }
+}
+
+function renderHistory() {
+  if (!S.exercises.length) return seedCard();
+  const list = exByRecent();
+  let ex = exById(ui.histEx); if (!ex || ex.archived) { ex = exById(ui.exId) || list[0]; ui.histEx = ex && ex.id; }
+  if (!ex) return '';
+  const bl = baselineVal(blId.kraft(ex.id));
+  const all = C.weekly(ex, S.sets, S.tests, bl);
+  const pb = kraftPB(ex);
+  const fromIdx = rangeFrom(all[0] && all[0].index);
+  const weeks = all.filter((w) => w.index >= fromIdx);
+  const useE = ex.mode === 'reps';
+  const series = weeks.map((w) => ({ x: w.index, y: useE ? w.e1rm : w.topLoad, w }));
+  const withY = series.filter((p) => p.y != null);
+  const tr = C.trend(series);
+  const ref = C.refMax(ex, C.addDays(todayIso(), 1), S.sets.filter((s) => s.exerciseId === ex.id), S.tests, bl);
+  const first = withY[0], last = withY[withY.length - 1];
+  const diff = first && last && withY.length > 1 ? last.y - first.y : null;
+  const diffPct = diff != null && first.y ? diff / first.y * 100 : null;
+  const seriesName = useE ? 'bestes e1RM' : 'Top-Gewicht';
+  const cls = (v) => v == null ? '' : v > 0 ? 'up' : v < 0 ? 'down' : '';
+  const sign = (v, d = 1) => v == null ? '–' : (v > 0 ? '+' : '') + fmt(v, d);
+  const tests = S.tests.filter((t) => t.exerciseId === ex.id).sort((a, b) => b.date.localeCompare(a.date));
+
+  pendingChart = {
+    from: fromIdx, to: C.isoWeek(todayIso()).index, dec: 1, minSpan: 10, unit: 'kg', label: ex.name,
+    series: withY.map((p) => ({ x: p.x, y: p.y, title: `KW ${p.w.week}: ${fmt(p.y)} kg` })),
+    marks: ex.mode === 'load_only' ? [] : weeks.flatMap((w) => w.tested.map((v) => ({ x: w.index, y: v, title: `Test: ${fmt(v)} kg` }))),
+    trend: tr, refLine: pb ? { y: pb.value, label: 'Bestleistung' } : null,
+  };
+
+  return `
+  <section class="card">
+    <label class="label" for="histEx">Übung</label>
+    <select id="histEx">${list.map((e) => `<option value="${e.id}" ${e.id === ex.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
+    <div class="row"><span class="badge">${MODE_LABEL[ex.mode]}</span>${ex.unilateral ? '<span class="badge">einseitig</span>' : ''}${ex.loadNote ? `<span class="badge">${esc(ex.loadNote)}</span>` : ''}
+      <span class="grow"></span>${rangeSeg()}</div>
+  </section>
+  <section class="card">
+    <div class="kpis">
+      <div class="kpi"><span class="label">${ex.mode === 'load_only' ? 'Top-Gewicht zuletzt' : 'Referenz-1RM'}</span><span class="v num">${ex.mode === 'load_only' ? kg(last && last.y) : kg(ref && ref.value)}</span><span class="s">${ex.mode === 'load_only' ? (last ? 'KW ' + last.w.week : 'noch keine Daten') : ref ? (ref.source === 'test' ? 'getestet' : 'geschätzt') : 'noch keine Daten'}</span></div>
+      <div class="kpi"><span class="label">Seit Start</span><span class="v num ${cls(diff)}">${diff == null ? '–' : sign(diff) + ' kg'}</span><span class="s num ${cls(diff)}">${diffPct == null ? (first ? 'erst eine Woche' : '') : sign(diffPct) + ' %'}${first ? ' · ab KW ' + first.w.week : ''}</span></div>
+      <div class="kpi"><span class="label">Trend</span><span class="v num ${cls(tr && tr.slope)}">${tr ? sign(tr.slope, 2) : '–'}</span><span class="s">${tr ? 'kg pro Woche · ' + tr.n + ' Wochen' : 'ab 2 Wochen mit Werten'}</span></div>
+      <div class="kpi"><span class="label">Bestleistung</span><span class="v num">${kg(pb && pb.value)}</span><span class="s">${esc(pbSrc(pb))}</span></div>
+    </div>
+    <div id="chart" class="chart"></div>
+    <div class="legend"><span><i></i>${seriesName} pro KW</span>${ex.mode !== 'load_only' ? '<span><i class="t"></i>getestetes 1RM</span>' : ''}<span><i class="d"></i>Trend</span>${pb ? '<span><i class="r"></i>Bestleistung</span>' : ''}</div>
+  </section>
+  <section class="card">
+    <h2>Wochenwerte</h2>
+    ${weeks.length ? `<div class="tbl"><table class="sets"><thead><tr><th>KW</th><th>bestes e1RM</th><th>Top-Gewicht</th><th>Volumen</th><th>Ø %</th></tr></thead><tbody>
+    ${weeks.slice().reverse().map((w) => `<tr><td>KW ${w.week}<span class="muted small"> ${w.year}</span>${w.tested.length ? ` <span class="badge comp">Test ${w.tested.map((v) => fmt(v)).join(', ')}</span>` : ''}</td><td>${useE ? fmt(w.e1rm) : '–'}</td><td>${fmt(w.topLoad)}</td><td>${w.volume ? fmt(w.volume, 0) : '–'}</td><td>${w.avgPct == null ? '–' : w.avgPct + ' %'}</td></tr>`).join('')}
+    </tbody></table></div>` : `<p class="muted small">Im gewählten Zeitraum gibt es noch keine Einträge für diese Übung.</p>`}
+  </section>
+  ${ex.mode !== 'load_only' ? `<section class="card"><h2>Getestete Maxima</h2>
+    ${tests.length ? tests.map((t) => `<div class="row small"><span class="num grow">${shortDate(t.date)} · <b>${kg(t.weightKg)}</b>${t.note ? ' · ' + esc(t.note) : ''}</span><button class="btn danger sm" data-act="delTest" data-id="${t.id}">${delLabel(t.id)}</button></div>`).join('') : '<p class="muted small">Noch kein Test. Trag einen unter «Erfassen» mit «Getestetes 1RM eintragen» ein.</p>'}
+  </section>` : ''}`;
+}
+
+function exForm(ex) {
+  const e = ex || { name: '', mode: 'reps', unilateral: false, loadNote: '', increment: 2.5 };
+  return `<div class="form" style="padding:6px 0 12px">
+    <label>Name<input type="text" id="x-name" value="${esc(e.name)}"></label>
+    <div class="two"><label>Modus<select id="x-mode">${Object.entries(MODE_LABEL).map(([k, l]) => `<option value="${k}" ${e.mode === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+    <label>Rundungsschritt kg<input type="number" step="0.25" inputmode="decimal" id="x-inc" value="${e.increment ?? 2.5}"></label></div>
+    <label>Lasthinweis<input type="text" id="x-note" value="${esc(e.loadNote || '')}" placeholder="z. B. kg pro Hand"></label>
+    <label class="check"><input type="checkbox" id="x-uni" ${e.unilateral ? 'checked' : ''}> Einseitig (Wdh gelten pro Seite, Volumen × 2)</label>
+    <div class="row"><button class="btn primary" data-act="saveEx" data-id="${ex ? ex.id : ''}">Speichern</button><button class="btn ghost" data-act="cancelEx">Abbrechen</button>
+    ${ex ? `<span class="grow"></span><button class="btn sm" data-act="archEx" data-id="${ex.id}">${ex.archived ? 'Wiederherstellen' : 'Archivieren'}</button>` : ''}</div>
+  </div>`;
+}
+function renderExercises() {
+  if (!S.exercises.length) return seedCard();
+  const list = S.exercises.filter((e) => ui.showArchived || !e.archived).sort((a, b) => Number(a.archived) - Number(b.archived) || a.name.localeCompare(b.name, 'de'));
+  const archivedN = S.exercises.filter((e) => e.archived).length;
+  return `<section class="card">
+    <div class="row"><h2 class="grow">Übungen</h2><button class="btn sm" data-act="newEx">Neue Übung</button></div>
+    ${ui.newEx ? exForm(null) : ''}
+    <div class="ex-list">${list.map((e) => ui.editEx === e.id ? exForm(e) : `<div class="ex-item">
+      <div class="grow"><div style="font-weight:600${e.archived ? ';color:var(--muted)' : ''}">${esc(e.name)}</div>
+      <div class="row" style="gap:6px;margin-top:4px"><span class="badge">${MODE_LABEL[e.mode]}</span>${e.unilateral ? '<span class="badge">einseitig</span>' : ''}${e.loadNote ? `<span class="badge">${esc(e.loadNote)}</span>` : ''}<span class="badge num">± ${fmt(e.increment)} kg</span>${e.archived ? '<span class="badge">archiviert</span>' : ''}</div></div>
+      <button class="btn sm" data-act="editEx" data-id="${e.id}">Bearbeiten</button></div>`).join('')}</div>
+    ${archivedN ? `<button class="btn ghost sm" data-act="toggleArch">${ui.showArchived ? 'Archivierte ausblenden' : archivedN + ' archivierte anzeigen'}</button>` : ''}
+  </section>`;
+}
+
+// ================= WURF (Hammer) =================
+function defaultWire(mass) {
+  let best = null;
+  for (const t of S.throws) if (t.massKg === mass && (!best || (t.date + (t.createdAt || '')) > (best.date + (best.createdAt || '')))) best = t;
+  return best ? best.wire : 'normal';
+}
+function comboEntries(mass, wire) { return S.throws.filter((t) => t.massKg === mass && t.wire === wire); }
+const byDateDesc = (a, b) => b.date.localeCompare(a.date) || (b.createdAt || '').localeCompare(a.createdAt || '');
+
+function renderWurfCapture() {
+  if (ui.wire == null) ui.wire = defaultWire(ui.mass);
+  const entries = comboEntries(ui.mass, ui.wire);
+  const pb = throwPB(ui.mass, ui.wire);
+  const last = entries.slice().sort(byDateDesc)[0];
+  const day = S.throws.filter((t) => t.date === ui.date).sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+  return `
+  <section class="card">
+    ${dateRow()}
+    <div class="label">Hammergewicht</div>
+    <div class="chips wrapchips" role="group" aria-label="Hammergewicht">
+      ${C.HAMMER_MASSES.map((m) => `<button class="chip" data-act="pickMass" data-m="${m}" aria-pressed="${m === ui.mass}">${massLabel(m)}</button>`).join('')}
+    </div>
+    <label class="form"><span class="label">Drahtlänge</span>
+      <select id="wire">${C.WIRES.map((w) => `<option value="${w.id}" ${w.id === ui.wire ? 'selected' : ''}>${w.label}</option>`).join('')}</select></label>
+  </section>
+  <section class="card">
+    <div class="facts">
+      <div><div class="label">Bestweite ${massLabel(ui.mass)} · ${esc(wireLabel(ui.wire))}</div><span class="big num">${pb ? f2(pb.value) : '–'}</span> <span class="muted">m</span><div class="src">${esc(pbSrc(pb))}</div></div>
+      <div><div class="label">Zuletzt</div><span class="big num">${last ? f2(last.distanceM) : '–'}</span> <span class="muted">m</span><div class="src">${last ? shortDate(last.date) : ''}</div></div>
+    </div>
+    <form id="wform" class="form" autocomplete="off">
+      <label for="dist" class="label">Bestweite der Einheit</label>
+      <div class="unitbox"><input type="text" id="dist" class="quick" inputmode="decimal" placeholder="58.40" value="${esc(ui.dist)}"><span class="u">m</span></div>
+      <label class="check"><input type="checkbox" id="comp" ${ui.comp ? 'checked' : ''}> Wettkampf</label>
+      <input type="text" id="wnote" placeholder="Notiz (optional)" aria-label="Notiz">
+      <button class="btn primary" type="submit">Weite speichern</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Würfe am ${esc(dateLabel(ui.date))}</h2>
+    ${day.length ? `<div class="tbl"><table class="sets"><thead><tr><th>Hammer</th><th>Draht</th><th>Weite</th></tr></thead><tbody>
+      ${day.map((t) => ui.editRow === t.id ? editRowHtml('throws', t, 3) : `<tr class="click" data-act="editRow" data-kind="throws" data-id="${t.id}" tabindex="0"><td>${massLabel(t.massKg)}${t.isCompetition ? ' <span class="badge comp">WK</span>' : ''}${t.note ? `<div class="src">${esc(t.note)}</div>` : ''}</td><td>${esc(wireLabel(t.wire))}</td><td><b>${f2(t.distanceM)}</b> m</td></tr>`).join('')}
+    </tbody></table></div>` : '<p class="muted small">An diesem Tag ist noch kein Wurf erfasst.</p>'}
+  </section>`;
+}
+
+function editRowHtml(kind, o, cols) {
+  const val = kind === 'throws' ? o.distanceM : o.value;
+  const unit = kind === 'throws' ? 'm' : (testDef(o.testId) || {}).unit;
+  return `<tr><td colspan="${cols}"><div class="form" style="margin:6px 0">
+    <div class="two"><label>Wert in ${unit}<input type="text" inputmode="decimal" id="er-v" value="${val}"></label>
+    <label>Notiz<input type="text" id="er-note" value="${esc(o.note || '')}"></label></div>
+    ${kind === 'throws' ? `<label class="check"><input type="checkbox" id="er-comp" ${o.isCompetition ? 'checked' : ''}> Wettkampf</label>` : ''}
+    <div class="row"><button class="btn primary sm" data-act="saveRow" data-kind="${kind}" data-id="${o.id}">Speichern</button><button class="btn sm" data-act="cancelRow">Abbrechen</button>
+    <span class="grow"></span><button class="btn danger sm" data-act="delRow" data-kind="${kind}" data-id="${o.id}">${delLabel(o.id)}</button></div></div></td></tr>`;
+}
+
+async function saveThrow() {
+  const d = num(ui.dist);
+  if (!(d >= 5 && d <= 100)) { toast('Bitte eine Weite zwischen 5 und 100 m eingeben'); return; }
+  const note = ($('#wnote').value || '').trim();
+  const o = { id: uid(), athleteId: S.athleteId, date: ui.date, massKg: ui.mass, wire: ui.wire, distanceM: Math.round(d * 100) / 100, isCompetition: !!ui.comp, createdAt: new Date().toISOString() };
+  if (note) o.note = note;
+  ui.dist = ''; ui.comp = false;
+  try { await put('throws', o); toast(f2(o.distanceM) + ' m gespeichert'); } catch (e) { /* Meldung kam schon */ }
+  render();
+}
+
+function throwCombos() {
+  const map = new Map();
+  const get = (mass, wire) => { const k = comboKey(mass, wire); if (!map.has(k)) map.set(k, { key: k, mass, wire, n: 0, last: null }); return map.get(k); };
+  for (const t of S.throws) {
+    const c = get(t.massKg, t.wire); c.n++;
+    if (!c.last || byDateDesc(t, c.last) < 0) c.last = t;
+  }
+  for (const b of S.baselines) if (b.kind === 'wurf' && b.value > 0) get(b.massKg, b.wire);
+  for (const c of map.values()) c.pb = throwPB(c.mass, c.wire);
+  const wireOrder = (w) => C.WIRES.findIndex((x) => x.id === w);
+  return [...map.values()].sort((a, b) => a.mass - b.mass || wireOrder(a.wire) - wireOrder(b.wire));
+}
+
+function renderWurfHistory() {
+  const combos = throwCombos();
+  if (!combos.length) return `<div class="card empty"><h2>Noch keine Würfe</h2><p class="muted small">Erfasse unter «Erfassen» die Bestweite einer Einheit. Für jede Kombination aus Hammergewicht und Draht entsteht hier eine eigene Kurve.</p></div>`;
+  let c = combos.find((x) => x.key === ui.histCombo);
+  if (!c) { c = combos.find((x) => x.mass === 7.26 && x.wire === 'normal') || combos.filter((x) => x.last).sort((a, b) => byDateDesc(a.last, b.last))[0] || combos[0]; ui.histCombo = c.key; }
+  const entries = comboEntries(c.mass, c.wire);
+  const all = C.weeklyBest(entries.map((t) => ({ date: t.date, value: t.distanceM, flag: t.isCompetition })), false);
+  const fromIdx = rangeFrom(all[0] && all[0].index);
+  const weeks = all.filter((w) => w.index >= fromIdx);
+  const tr = C.trend(weeks.map((w) => ({ x: w.index, y: w.best })));
+  const sorted = entries.slice().sort(byDateDesc);
+  const prev = sorted[1];
+  const delta = prev ? sorted[0].distanceM - prev.distanceM : null;
+  const pb = c.pb;
+  const inRange = sorted.filter((t) => C.isoWeek(t.date).index >= fromIdx);
+  const sign = (v) => (v > 0 ? '+' : '') + v.toFixed(2);
+
+  pendingChart = {
+    from: fromIdx, to: C.isoWeek(todayIso()).index, dec: 2, minSpan: 4, unit: 'm', label: massLabel(c.mass) + ' ' + wireLabel(c.wire),
+    series: weeks.map((w) => ({ x: w.index, y: w.best, title: `KW ${w.week}: ${f2(w.best)} m` })),
+    marks: weeks.flatMap((w) => w.flagged.map((v) => ({ x: w.index, y: v, title: `Wettkampf: ${f2(v)} m` }))),
+    trend: tr, refLine: pb ? { y: pb.value, label: 'Bestleistung' } : null,
+  };
+
+  return `
+  <section class="card">
+    <div class="row"><h2 class="grow">Gewicht und Draht</h2>${rangeSeg()}</div>
+    <div class="tbl"><table class="sets"><thead><tr><th>Hammer</th><th>Draht</th><th>Bestweite</th><th>Zuletzt</th><th>Anz.</th></tr></thead><tbody>
+    ${combos.map((x) => `<tr class="click ${x.key === c.key ? 'sel' : ''}" data-act="pickCombo" data-k="${x.key}" tabindex="0"><td>${massLabel(x.mass)}</td><td>${esc(wireLabel(x.wire))}</td><td><b>${f2(x.pb && x.pb.value)}</b>${x.pb && x.pb.source === 'Vergleichswert' ? ' <span class="badge">VW</span>' : ''}</td><td>${x.last ? f2(x.last.distanceM) : '–'}</td><td>${x.n}</td></tr>`).join('')}
+    </tbody></table></div>
+  </section>
+  <section class="card">
+    <div class="label">${massLabel(c.mass)} · Draht ${esc(wireLabel(c.wire))}</div>
+    <div class="kpis">
+      <div class="kpi"><span class="label">Bestleistung</span><span class="v num">${pb ? f2(pb.value) + ' m' : '–'}</span><span class="s">${esc(pbSrc(pb))}</span></div>
+      <div class="kpi"><span class="label">Zuletzt</span><span class="v num">${sorted[0] ? f2(sorted[0].distanceM) + ' m' : '–'}</span><span class="s num ${delta == null ? '' : delta > 0 ? 'up' : delta < 0 ? 'down' : ''}">${!sorted[0] ? 'noch kein Wurf' : delta == null ? shortDate(sorted[0].date) : sign(delta) + ' m zum Vorwert'}</span></div>
+      <div class="kpi"><span class="label">Trend</span><span class="v num ${tr ? (tr.slope > 0 ? 'up' : tr.slope < 0 ? 'down' : '') : ''}">${tr ? sign(tr.slope) : '–'}</span><span class="s">${tr ? 'm pro Woche · ' + tr.n + ' Wochen' : 'ab 2 Wochen mit Werten'}</span></div>
+    </div>
+    <div id="chart" class="chart"></div>
+    <div class="legend"><span><i></i>Bestweite pro KW</span><span><i class="t"></i>Wettkampf</span><span><i class="d"></i>Trend</span>${pb ? '<span><i class="r"></i>Bestleistung</span>' : ''}</div>
+  </section>
+  <section class="card">
+    <h2>Einträge</h2>
+    ${inRange.length ? `<div class="tbl"><table class="sets"><thead><tr><th>Datum</th><th>KW</th><th>Weite</th></tr></thead><tbody>
+    ${inRange.map((t) => ui.editRow === t.id ? editRowHtml('throws', t, 3) : `<tr class="click" data-act="editRow" data-kind="throws" data-id="${t.id}" tabindex="0"><td>${shortDate(t.date)}${t.isCompetition ? ' <span class="badge comp">WK</span>' : ''}${t.note ? `<div class="src">${esc(t.note)}</div>` : ''}</td><td>${C.isoWeek(t.date).week}</td><td><b>${f2(t.distanceM)}</b> m</td></tr>`).join('')}
+    </tbody></table></div>` : '<p class="muted small">Im gewählten Zeitraum gibt es keine Einträge für diese Kombination.</p>'}
+  </section>`;
+}
+
+// ================= TESTS =================
+function defaultShot(testId) {
+  const last = S.results.filter((r) => r.testId === testId && r.shotKg).sort(byDateDesc)[0];
+  return last ? last.shotKg : 4;
+}
+function resultEntries(testId, shot) { return S.results.filter((r) => r.testId === testId && (testDef(testId).shot ? r.shotKg === shot : true)); }
+
+function renderTestsCapture() {
+  const t = testDef(ui.testId) || C.TESTS[0];
+  const shot = t.shot ? ui.shot : null;
+  const entries = resultEntries(t.id, shot);
+  const pb = testPB(t.id, shot);
+  const last = entries.slice().sort(byDateDesc)[0];
+  const day = S.results.filter((r) => r.date === ui.date).sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+  return `
+  <section class="card">
+    ${dateRow()}
+    <div class="label">Test</div>
+    <div class="chips wrapchips" role="group" aria-label="Test">
+      ${C.TESTS.map((x) => `<button class="chip" data-act="pickTestId" data-id="${x.id}" aria-pressed="${x.id === t.id}">${esc(x.name)}</button>`).join('')}
+    </div>
+    ${t.shot ? `<label class="form"><span class="label">Kugelgewicht</span>
+      <select id="shot">${C.SHOT_MASSES.map((m) => `<option value="${m}" ${m === ui.shot ? 'selected' : ''}>${m} kg</option>`).join('')}</select></label>` : ''}
+  </section>
+  <section class="card">
+    <div class="facts">
+      <div><div class="label">Bestwert ${esc(resultName(t.id, shot))}</div><span class="big num">${pb ? f2(pb.value) : '–'}</span> <span class="muted">${t.unit}</span><div class="src">${esc(pbSrc(pb))}${t.lowerBetter ? ' · tiefer ist besser' : ''}</div></div>
+      <div><div class="label">Zuletzt</div><span class="big num">${last ? f2(last.value) : '–'}</span> <span class="muted">${t.unit}</span><div class="src">${last ? shortDate(last.date) : ''}</div></div>
+    </div>
+    <form id="tform" class="form" autocomplete="off">
+      <label for="tval" class="label">Bestes Resultat</label>
+      <div class="unitbox"><input type="text" id="tval" class="quick" inputmode="decimal" placeholder="${t.unit === 's' ? '4.21' : t.id === 'standweit' ? '2.85' : '12.50'}" value="${esc(ui.tval)}"><span class="u">${t.unit}</span></div>
+      <input type="text" id="tnote" placeholder="Notiz (optional)" aria-label="Notiz">
+      <button class="btn primary" type="submit">Resultat speichern</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Tests am ${esc(dateLabel(ui.date))}</h2>
+    ${day.length ? `<div class="tbl"><table class="sets"><thead><tr><th>Test</th><th>Resultat</th></tr></thead><tbody>
+      ${day.map((r) => ui.editRow === r.id ? editRowHtml('results', r, 2) : `<tr class="click" data-act="editRow" data-kind="results" data-id="${r.id}" tabindex="0"><td>${esc(resultName(r.testId, r.shotKg))}${r.note ? `<div class="src">${esc(r.note)}</div>` : ''}</td><td><b>${f2(r.value)}</b> ${(testDef(r.testId) || {}).unit || ''}</td></tr>`).join('')}
+    </tbody></table></div>` : '<p class="muted small">An diesem Tag ist noch kein Test erfasst.</p>'}
+  </section>`;
+}
+
+async function saveResult() {
+  const t = testDef(ui.testId); const v = num(ui.tval);
+  if (!(v >= t.min && v <= t.max)) { toast(`Bitte einen Wert zwischen ${t.min} und ${t.max} ${t.unit} eingeben`); return; }
+  const note = ($('#tnote').value || '').trim();
+  const o = { id: uid(), athleteId: S.athleteId, date: ui.date, testId: t.id, value: Math.round(v * 100) / 100, createdAt: new Date().toISOString() };
+  if (t.shot) o.shotKg = ui.shot;
+  if (note) o.note = note;
+  ui.tval = '';
+  try { await put('results', o); toast(resultName(o.testId, o.shotKg) + ' gespeichert'); } catch (e) { /* Meldung kam schon */ }
+  render();
+}
+
+function resultOptions() {
+  const opts = [];
+  for (const t of C.TESTS) {
+    if (!t.shot) { opts.push({ key: resultKey(t.id), testId: t.id, shot: null }); continue; }
+    const shots = new Set([4, ...S.results.filter((r) => r.testId === t.id && r.shotKg).map((r) => r.shotKg)]);
+    for (const s of [...shots].sort((a, b) => a - b)) opts.push({ key: resultKey(t.id, s), testId: t.id, shot: s });
+  }
+  return opts;
+}
+
+function renderTestsHistory() {
+  const opts = resultOptions();
+  let o = opts.find((x) => x.key === ui.histResult);
+  if (!o) { const lastR = S.results.slice().sort(byDateDesc)[0]; o = (lastR && opts.find((x) => x.key === resultKey(lastR.testId, lastR.shotKg))) || opts[0]; ui.histResult = o.key; }
+  const t = testDef(o.testId);
+  const entries = resultEntries(o.testId, o.shot);
+  const all = C.weeklyBest(entries.map((r) => ({ date: r.date, value: r.value })), t.lowerBetter);
+  const fromIdx = rangeFrom(all[0] && all[0].index);
+  const weeks = all.filter((w) => w.index >= fromIdx);
+  const sorted = entries.slice().sort(byDateDesc);
+  const pb = testPB(o.testId, o.shot);
+  const delta = sorted[1] ? sorted[0].value - sorted[1].value : null;
+  const good = (d) => d == null || d === 0 ? '' : (t.lowerBetter ? d < 0 : d > 0) ? 'up' : 'down';
+  const sign = (v) => (v > 0 ? '+' : '') + v.toFixed(2);
+  const inRange = sorted.filter((r) => C.isoWeek(r.date).index >= fromIdx);
+
+  pendingChart = {
+    from: fromIdx, to: C.isoWeek(todayIso()).index, dec: 2, minSpan: t.unit === 's' ? 0.3 : 0.5, unit: t.unit, label: resultName(o.testId, o.shot),
+    series: weeks.map((w) => ({ x: w.index, y: w.best, title: `KW ${w.week}: ${f2(w.best)} ${t.unit}` })), marks: [], trend: null,
+    refLine: pb ? { y: pb.value, label: 'Bestleistung' } : null,
+  };
+
+  return `
+  <section class="card">
+    <label class="label" for="histResult">Test</label>
+    <select id="histResult">${opts.map((x) => `<option value="${x.key}" ${x.key === o.key ? 'selected' : ''}>${esc(resultName(x.testId, x.shot))}</option>`).join('')}</select>
+    <div class="row">${t.lowerBetter ? '<span class="badge">tiefer ist besser</span>' : ''}<span class="grow"></span>${rangeSeg()}</div>
+  </section>
+  <section class="card">
+    <div class="kpis">
+      <div class="kpi"><span class="label">Bestleistung</span><span class="v num">${pb ? f2(pb.value) + ' ' + t.unit : '–'}</span><span class="s">${esc(pbSrc(pb))}</span></div>
+      <div class="kpi"><span class="label">Zuletzt</span><span class="v num">${sorted[0] ? f2(sorted[0].value) + ' ' + t.unit : '–'}</span><span class="s">${sorted[0] ? shortDate(sorted[0].date) : ''}</span></div>
+      <div class="kpi"><span class="label">Zum Vorwert</span><span class="v num ${good(delta)}">${delta == null ? '–' : sign(delta)}</span><span class="s">${delta == null ? 'ab 2 Resultaten' : t.unit + (good(delta) === 'up' ? ' · besser' : good(delta) === 'down' ? ' · schlechter' : '')}</span></div>
+    </div>
+    <div id="chart" class="chart"></div>
+    <div class="legend"><span><i></i>Bestwert pro KW</span>${pb ? '<span><i class="r"></i>Bestleistung</span>' : ''}</div>
+  </section>
+  <section class="card">
+    <h2>Resultate</h2>
+    ${inRange.length ? `<div class="tbl"><table class="sets"><thead><tr><th>Datum</th><th>KW</th><th>Resultat</th></tr></thead><tbody>
+    ${inRange.map((r) => ui.editRow === r.id ? editRowHtml('results', r, 3) : `<tr class="click" data-act="editRow" data-kind="results" data-id="${r.id}" tabindex="0"><td>${shortDate(r.date)}${r.note ? `<div class="src">${esc(r.note)}</div>` : ''}</td><td>${C.isoWeek(r.date).week}</td><td><b>${f2(r.value)}</b> ${t.unit}</td></tr>`).join('')}
+    </tbody></table></div>` : '<p class="muted small">Im gewählten Zeitraum gibt es noch keine Resultate für diesen Test.</p>'}
+  </section>`;
+}
+
+// ================= BESTWERTE (Vergleichswerte ohne Datum) =================
+function blInput(id, value, data) {
+  const attrs = Object.entries(data).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' ');
+  return `<input type="text" inputmode="decimal" class="blin" id="bl-${id}" data-bl="${id}" ${attrs} value="${value ?? ''}" placeholder="–" aria-label="Vergleichswert">`;
+}
+const blIntro = (unitHint) => `<p class="note">Trag hier deine bisherigen Bestleistungen ohne Datum ein (${unitHint}). Sie dienen als Vergleichswert. Die angezeigte Bestleistung ist immer der bessere Wert aus Vergleichswert und erfassten Daten und passt sich automatisch an. Feld leeren entfernt den Vergleichswert.</p>`;
+
+function renderKraftBest() {
+  if (!S.exercises.length) return seedCard();
+  return `<section class="card"><h2>Bestwerte Kraft</h2>${blIntro('1RM bzw. Top-Gewicht in kg')}
+    <div class="tbl"><table class="sets"><thead><tr><th>Übung</th><th>Vergleichswert</th><th>Bestleistung</th></tr></thead><tbody>
+    ${activeEx().map((ex) => { const pb = kraftPB(ex); return `<tr><td>${esc(ex.name)}<div class="src">${ex.mode === 'load_only' ? 'Top-Gewicht kg' : '1RM kg'}</div></td>
+      <td>${blInput(blId.kraft(ex.id), baselineVal(blId.kraft(ex.id)), { kind: 'kraft', ex: ex.id })}</td>
+      <td><b>${pb ? fmt(pb.value) : '–'}</b><div class="src">${esc(pb ? pb.source : '')}</div></td></tr>`; }).join('')}
+    </tbody></table></div>
+    <p class="note">Beim Referenz-1RM gilt der Vergleichswert nur, solange es keinen Test und keine Schätzung aus den letzten 28 Tagen gibt.</p></section>`;
+}
+
+function renderWurfBest() {
+  const rows = new Map();
+  const add = (m, w) => rows.set(comboKey(m, w), { m, w });
+  for (const m of C.HAMMER_MASSES) add(m, 'normal');
+  for (const t of S.throws) add(t.massKg, t.wire);
+  for (const b of S.baselines) if (b.kind === 'wurf') add(b.massKg, b.wire);
+  for (const k of ui.blCombos) { const [m, w] = k.split('|'); add(Number(m), w); }
+  const wo = (w) => C.WIRES.findIndex((x) => x.id === w);
+  const list = [...rows.values()].sort((a, b) => a.m - b.m || wo(a.w) - wo(b.w));
+  return `<section class="card"><h2>Bestwerte Wurf</h2>${blIntro('Weite in m pro Hammergewicht und Draht')}
+    <div class="tbl"><table class="sets"><thead><tr><th>Hammer</th><th>Draht</th><th>Vergleichswert</th><th>Bestleistung</th></tr></thead><tbody>
+    ${list.map(({ m, w }) => { const id = blId.wurf(m, w); const pb = throwPB(m, w); return `<tr><td>${massLabel(m)}</td><td>${esc(wireLabel(w))}</td>
+      <td>${blInput(id, baselineVal(id), { kind: 'wurf', mass: m, wire: w })}</td>
+      <td><b>${pb ? f2(pb.value) : '–'}</b><div class="src">${esc(pb ? pb.source : '')}</div></td></tr>`; }).join('')}
+    </tbody></table></div>
+    <div class="row"><select id="bl-mass" style="width:auto">${C.HAMMER_MASSES.map((m) => `<option value="${m}">${massLabel(m)}</option>`).join('')}</select>
+      <select id="bl-wire" style="width:auto">${C.WIRES.filter((w) => w.id !== 'normal').map((w) => `<option value="${w.id}">${w.label}</option>`).join('')}</select>
+      <button class="btn sm" data-act="addBlCombo">Zeile mit Kurzdraht</button></div></section>`;
+}
+
+function renderTestsBest() {
+  const rows = [];
+  for (const t of C.TESTS) { if (t.shot) for (const s of C.SHOT_MASSES) rows.push({ t, s }); else rows.push({ t, s: null }); }
+  return `<section class="card"><h2>Bestwerte Tests</h2>${blIntro('Sprint in s, Würfe und Sprünge in m')}
+    <div class="tbl"><table class="sets"><thead><tr><th>Test</th><th>Vergleichswert</th><th>Bestleistung</th></tr></thead><tbody>
+    ${rows.map(({ t, s }) => { const id = blId.test(t.id, s); const pb = testPB(t.id, s); return `<tr><td>${esc(resultName(t.id, s))}<div class="src">${t.unit}${t.lowerBetter ? ' · tiefer ist besser' : ''}</div></td>
+      <td>${blInput(id, baselineVal(id), { kind: 'test', test: t.id, shot: s || '' })}</td>
+      <td><b>${pb ? f2(pb.value) : '–'}</b><div class="src">${esc(pb ? pb.source : '')}</div></td></tr>`; }).join('')}
+    </tbody></table></div></section>`;
+}
+
+async function saveBaseline(el) {
+  const id = el.dataset.bl, kind = el.dataset.kind, raw = el.value.trim();
+  if (raw === '') {
+    if (S.baselines.some((b) => b.id === id)) { try { await del('baselines', id); toast('Vergleichswert entfernt'); } catch (e) { /* Meldung kam schon */ } }
+    render(); return;
+  }
+  const v = num(raw);
+  const doc = { id, kind, athleteId: S.athleteId, value: Math.round(v * 100) / 100, updatedAt: new Date().toISOString() };
+  if (kind === 'kraft') {
+    if (!(v > 0 && v <= 500)) { toast('Bitte einen Wert zwischen 1 und 500 kg eingeben'); return; }
+    doc.exerciseId = el.dataset.ex;
+  } else if (kind === 'wurf') {
+    if (!(v >= 5 && v <= 100)) { toast('Bitte eine Weite zwischen 5 und 100 m eingeben'); return; }
+    doc.massKg = Number(el.dataset.mass); doc.wire = el.dataset.wire;
+  } else {
+    const t = testDef(el.dataset.test);
+    if (!(v >= t.min && v <= t.max)) { toast(`Bitte einen Wert zwischen ${t.min} und ${t.max} ${t.unit} eingeben`); return; }
+    doc.testId = t.id; if (el.dataset.shot) doc.shotKg = Number(el.dataset.shot);
+  }
+  try { await put('baselines', doc); toast('Vergleichswert gespeichert'); } catch (e) { /* Meldung kam schon */ }
+  render();
+}
+
+// ================= PROGNOSE =================
+const DAYMS = 86400000;
+function progData() {
+  const cal = HM.calibrate(S.throws);
+  const today = todayIso();
+  const now = HM.predict(S.throws, today, cal);
+  const weeks = [];
+  if (S.throws.length) {
+    const first = S.throws.reduce((m, t) => (t.date < m ? t.date : m), today);
+    const nowW = C.isoWeek(today).index;
+    for (let i = C.isoWeek(first).index; i <= nowW; i++) {
+      const wk = C.isoWeek(C.toIso(i * 7 * DAYMS));
+      const sun = C.addDays(wk.monday, 6);
+      const p = HM.predict(S.throws, sun > today ? today : sun, cal);
+      let act = null;
+      for (const t of S.throws) if (HM.isComp(t.massKg) && t.wire === 'normal' && t.date >= wk.monday && t.date <= sun && (act == null || t.distanceM > act)) act = t.distanceM;
+      weeks.push({ index: i, week: wk.week, monday: wk.monday, p, act });
+    }
+  }
+  return { cal, now, weeks, today };
+}
+
+/** Alle Reihen als Wochenwerte – Grundlage für Zubringer-Analyse und Vergleich. */
+function seriesCatalog(pd) {
+  const out = [];
+  const toMap = (weeks, val) => { const m = new Map(); for (const w of weeks) { const v = val(w); if (v != null) m.set(w.index, v); } return m; };
+  const pm = toMap(pd.weeks, (w) => w.p.P);
+  if (pm.size) out.push({ key: 'prog', kind: 'prog', name: 'Prognose 7.26 kg', unit: 'm', dec: 2, map: pm, pb: Math.max(...pm.values()) });
+  for (const c of throwCombos()) {
+    if (!c.n) continue;
+    const m = toMap(C.weeklyBest(comboEntries(c.mass, c.wire).map((t) => ({ date: t.date, value: t.distanceM })), false), (w) => w.best);
+    out.push({ key: 'w:' + c.key, kind: 'wurf', mass: c.mass, wire: c.wire, name: 'Hammer ' + massLabel(c.mass) + (c.wire === 'normal' ? '' : ' · ' + wireLabel(c.wire)), unit: 'm', dec: 2, map: m, pb: c.pb && c.pb.value });
+  }
+  for (const ex of activeEx()) {
+    const wk = C.weekly(ex, S.sets, S.tests, baselineVal(blId.kraft(ex.id)));
+    const maxT = (w) => (w.tested.length ? Math.max(...w.tested) : null);
+    const m = toMap(wk, (w) => ex.mode === 'reps' ? (w.e1rm ?? maxT(w)) : ex.mode === 'tested_only' ? maxT(w) : w.topLoad);
+    if (!m.size) continue;
+    const pb = kraftPB(ex);
+    out.push({ key: 'k:' + ex.id, kind: 'kraft', ex, name: ex.name, unit: 'kg', dec: 1, map: m, pb: pb && pb.value });
+  }
+  for (const o of resultOptions()) {
+    const t = testDef(o.testId); const entries = resultEntries(o.testId, o.shot);
+    if (!entries.length) continue;
+    const m = toMap(C.weeklyBest(entries.map((r) => ({ date: r.date, value: r.value })), t.lowerBetter), (w) => w.best);
+    const pb = testPB(o.testId, o.shot);
+    out.push({ key: 't:' + o.key, kind: 'test', testId: o.testId, shot: o.shot, name: resultName(o.testId, o.shot), unit: t.unit, dec: 2, lowerBetter: !!t.lowerBetter, map: m, pb: pb && pb.value });
+  }
+  return out;
+}
+
+function literatureFor(s) {
+  if (s.kind === 'test') return {
+    kugel_rueck: 'r 0.95 (Terzis 2010) · 0.61 (Maeda 2024, Frauen)',
+    kugel_vor: 'r 0.62 (Maeda 2024, Frauen)',
+    standweit: 'r 0.40 (Maeda 2024, Frauen)',
+    sprint30: 'r −0.10, n. s. (Maeda 2024)',
+    frosch3: 'Standdreisprung r 0.61 (Maeda 2024)',
+  }[s.testId] || '';
+  if (s.kind === 'wurf') return s.mass === 10 ? 'r 0.82 (Bondartschuk, 80-m-Werfer)' : 'spezifisch, hoch (Králová 2015)';
+  if (s.kind === 'kraft') {
+    const n = s.name.toLowerCase();
+    if (/reisskniebeug|kniebeug|squat/.test(n)) return 'Kniebeuge r 0.69 (Maeda) · 0.20 bei 80-m-Werfern (Bondartschuk)';
+    if (/anreiss|reissen/.test(n)) return 'Reissen r 0.79 (Maeda 2024, Frauen)';
+    if (/umsetz|züge/.test(n)) return 'Umsetzen r 0.77 (Maeda 2024, Frauen)';
+  }
+  return '';
+}
+
+function zubringerAnalysis(pd, catalog) {
+  const target = new Map();
+  for (const w of pd.weeks) { const v = w.act != null ? w.act : w.p.P; if (v != null) target.set(w.index, { v, real: w.act != null }); }
+  const rows = [];
+  for (const s of catalog) {
+    if (s.kind === 'prog' || (s.kind === 'wurf' && HM.isComp(s.mass) && s.wire === 'normal')) continue;
+    const idx = [...s.map.keys()].sort((a, b) => a - b);
+    const x = [], y = [];
+    for (const [ti, tv] of target) {
+      if (s.kind === 'wurf') { if (!tv.real || !s.map.has(ti)) continue; x.push(s.map.get(ti)); y.push(tv.v); continue; }
+      let j = -1; for (const i of idx) if (i <= ti) j = i; // letzter Wert bis zu 4 Wochen zurück
+      if (j < 0 || ti - j > 4) continue;
+      x.push(s.map.get(j)); y.push(tv.v);
+    }
+    const n = x.length, r = HM.pearson(x, y), reg = n >= 4 ? HM.linreg(x, y) : null;
+    const current = s.map.get(idx[idx.length - 1]);
+    let expected = reg ? reg.intercept + reg.slope * current : null;
+    if (expected != null && !(expected > 0 && expected < 120)) expected = null;
+    rows.push({ s, n, r, reg, current, expected, lit: literatureFor(s) });
+  }
+  rows.sort((a, b) => (Math.abs(b.r ?? 0) - Math.abs(a.r ?? 0)) || b.n - a.n);
+  const used = rows.filter((z) => z.n >= 6 && z.r != null && Math.abs(z.r) >= 0.3 && z.expected != null);
+  const W = used.reduce((a, z) => a + z.r * z.r * (z.n - 2), 0);
+  const P = W ? used.reduce((a, z) => a + z.r * z.r * (z.n - 2) * z.expected, 0) / W : null;
+  return { rows, used, P, nTarget: target.size, nReal: [...target.values()].filter((t) => t.real).length };
+}
+
+function renderForecast() {
+  if (!S.throws.length) return `<div class="card empty"><h2>Noch keine Würfe</h2><p class="muted small">Die Prognose rechnet die Weite mit dem 7.26-kg-Hammer aus Würfen mit leichteren und schwereren Hämmern hoch. Erfasse dazu unter «Wurf» deine Bestweiten pro Gewicht.</p></div>`;
+  const pd = progData(); const { cal, now, weeks } = pd;
+  const nowW = C.isoWeek(pd.today).index;
+  const fromIdx = rangeFrom(weeks[0] && weeks[0].index);
+  const shown = weeks.filter((w) => w.index >= fromIdx);
+  const withP = shown.filter((w) => w.p.P != null);
+  const compPB = throwPB(7.26, 'normal');
+  pendingChart = {
+    from: fromIdx, to: nowW, dec: 2, minSpan: 4, unit: 'm', label: 'Prognose 7.26 kg',
+    series: withP.map((w) => ({ x: w.index, y: w.p.P, title: `KW ${w.week}: Prognose ${f2(w.p.P)} m` })),
+    band: withP.map((w) => ({ x: w.index, lo: w.p.lo, hi: w.p.hi })),
+    marks: shown.filter((w) => w.act != null).map((w) => ({ x: w.index, y: w.act, title: `KW ${w.week}: 7.26 kg geworfen ${f2(w.act)} m` })),
+    trend: C.trend(shown.map((w) => ({ x: w.index, y: w.p.P }))),
+    refLine: compPB ? { y: compPB.value, label: 'Bestleistung 7.26' } : null,
+  };
+
+  // Äquivalenzkurve aus den Bestleistungen (inkl. Vergleichswerte), Normaldraht
+  const eqPts = C.HAMMER_MASSES.map((m) => { const pb = throwPB(m, 'normal'); return pb ? { x: m, y: pb.value } : null; }).filter(Boolean);
+  const eqPred = HM.predictFromBests(eqPts.map((p) => ({ m: p.x, d: p.y })), cal);
+  const curve = eqPred.P ? Array.from({ length: 29 }, (_, i) => 5 + i * 0.25).map((m) => ({ x: m, y: HM.distanceAt(eqPred.P, m, cal.f) })) : [];
+  pendingExtra = () => drawEquivChart($('#chart2'), { points: eqPts, curve });
+  const resid = eqPred.P ? eqPts.filter((p) => !HM.isComp(p.x)).map((p) => ({ m: p.x, r: p.y / HM.distanceAt(eqPred.P, p.x, cal.f) - 1 })) : [];
+  const avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  const rL = avg(resid.filter((x) => x.m < 7.26).map((x) => x.r)), rH = avg(resid.filter((x) => x.m > 7.26).map((x) => x.r));
+  const eqText = rL == null || rH == null ? 'Für eine Aussage braucht es Bestleistungen mit mindestens einem leichteren und einem schwereren Hammer.'
+    : rL - rH > 0.02 ? 'Die leichten Hämmer liegen über der Kurve, die schweren darunter: Die Schnelligkeit ist stärker als die spezifische Kraft.'
+    : rH - rL > 0.02 ? 'Die schweren Hämmer liegen über der Kurve, die leichten darunter: Die spezifische Kraft ist stärker als die Schnelligkeit.'
+    : 'Leichte und schwere Hämmer liegen nahe an der Kurve: Kraft und Schnelligkeit sind ausgeglichen.';
+
+  const catalog = seriesCatalog(pd);
+  const zb = zubringerAnalysis(pd, catalog);
+  const actual = now.comp ? now.comp.d : null;
+  const ausn = actual && zb.P ? actual / zb.P : null;
+
+  const diagTxt = { speed: ['speed', 'Schnelligkeitsdefizit: mehr leichte Hämmer'], strength: ['strength', 'Kraftdefizit: mehr schwere Hämmer'], balanced: ['balanced', 'Leichte und schwere Hämmer ausgeglichen'] }[now.diag];
+  const sign = (v, d = 2) => (v > 0 ? '+' : '') + v.toFixed(d);
+  const fitTxt = cal.fFit == null ? 'noch keine Kalibrierpaare (Einheiten mit 7.26 kg und einem anderen Gewicht am selben Tag)' : `eigene Anpassung ${fmt(cal.fFit, 2)} aus ${cal.nPairs} Paaren${cal.outliers.length ? ', ' + cal.outliers.length + ' Ausreisser ignoriert' : ''}`;
+  const wfs = Object.entries(cal.wireFactors);
+  const bk = HM.predictBakarynov({});
+
+  return `
+  <section class="card">
+    <div class="label">Prognose 7.26 kg · Normaldraht · Stand ${shortDate(pd.today)}</div>
+    ${now.P != null ? `<div class="ref"><span class="big num" style="font-size:3rem">${f2(now.P)}</span><span class="muted">m</span></div>
+      <div class="src">95 %-Bereich (Schätzung): <b class="num">${f2(now.lo)} – ${f2(now.hi)} m</b> · aus ${now.n} Gerät${now.n === 1 ? '' : 'en'} der letzten 28 Tage, Modell A</div>`
+      : `<p class="muted">Für eine aktuelle Prognose braucht es in den letzten 28 Tagen Würfe mit einem anderen Gewicht als 7.26 kg (Normaldraht oder kalibrierter Kurzdraht).</p>`}
+    <div class="row">${diagTxt ? `<span class="pill ${diagTxt[0]}">${diagTxt[1]}</span>` : '<span class="note">Diagnose ab je einem leichten und einem schweren Hammer im Zeitraum.</span>'}</div>
+    <div class="facts">
+      <div><div class="label">7.26 kg geworfen (28 Tage)</div><span class="big num">${actual ? f2(actual) : '–'}</span> <span class="muted">m</span>${now.gap != null ? `<div class="src ${now.gap < -0.02 ? 'down' : ''}">${sign(now.gap * 100, 1)} % zur Prognose${now.gap < -0.02 ? ' · Übertrag aufs Wettkampfgerät / Technik prüfen' : ''}</div>` : ''}</div>
+      <div><div class="label">Bestleistung 7.26 kg</div><span class="big num">${compPB ? f2(compPB.value) : '–'}</span> <span class="muted">m</span><div class="src">${esc(pbSrc(compPB))}</div></div>
+    </div>
+  </section>
+  <section class="card">
+    <div class="row"><h2 class="grow">Verlauf</h2>${rangeSeg()}</div>
+    <div id="chart" class="chart"></div>
+    <div class="legend"><span><i></i>Prognose pro KW</span><span><i class="b"></i>95 %-Bereich</span><span><i class="t"></i>7.26 kg geworfen</span><span><i class="d"></i>Trend</span>${compPB ? '<span><i class="r"></i>Bestleistung</span>' : ''}</div>
+  </section>
+  <section class="card">
+    <h2>Modelle im Vergleich</h2>
+    ${now.parts.length ? `<div class="tbl"><table class="sets"><thead><tr><th>Gerät (28 Tage)</th><th>Weite</th><th>A</th><th>B</th><th>C</th></tr></thead><tbody>
+      ${now.parts.map((p) => `<tr><td>${massLabel(p.m)}${p.wire !== 'normal' ? `<div class="src">${esc(wireLabel(p.wire))}, umgerechnet</div>` : ''}<div class="src">${shortDate(p.date)}</div></td><td>${f2(p.raw)}</td><td><b>${f2(p.P)}</b></td><td>${f2(p.B)}</td><td>${f2(p.C)}</td></tr>`).join('')}
+      <tr><td>Modell D (Interpolation leicht/schwer)</td><td></td><td colspan="3">${now.modelD != null ? f2(now.modelD) + ' m' : 'braucht leichteren und schwereren Hammer'}</td></tr>
+      <tr><td><b>Kombiniert (A, inverse Varianz)</b></td><td></td><td colspan="3"><b>${f2(now.P)} m</b></td></tr>
+    </tbody></table></div>` : '<p class="muted small">Keine Würfe mit anderen Gewichten in den letzten 28 Tagen.</p>'}
+    <p class="note">A: physikalisches Massenmodell (Hauptzahl) · B: ${fmt(cal.k * 100, 1)} % pro kg (McAtee) · C: 6.72 m pro kg (throw-calc) · D: Interpolation (McQuaid). 7.26-kg-Würfe fliessen nicht in die Prognose ein, sie dienen als Vergleich.</p>
+  </section>
+  <section class="card">
+    <h2>Äquivalenzkurve</h2>
+    <div id="chart2" class="chart"></div>
+    <div class="legend"><span><i></i>Bestleistung je Gewicht (Normaldraht)</span><span><i class="d"></i>erwartete Weite laut Modell A</span></div>
+    <p class="small">${esc(eqText)}${eqPred.P ? ` Aus allen Bestleistungen ergibt sich ein Potenzial von <b class="num">${f2(eqPred.P)} m</b> mit 7.26 kg.` : ''}</p>
+  </section>
+  <section class="card">
+    <h2>Zubringerleistungen</h2>
+    <p class="note">Eigene Längsschnitt-Korrelation jeder Kraft-, Test- und Wurfreihe mit der Wochenleistung 7.26 kg (geworfen, sonst Prognose). Kraft- und Testwerte gelten bis 4 Wochen weiter. Unter 10 gemeinsamen Wochen ist das Ergebnis vorläufig. Datengrundlage: ${zb.nTarget} Wochen, davon ${zb.nReal} mit 7.26-kg-Würfen.</p>
+    ${zb.rows.length ? `<div class="tbl"><table class="sets"><thead><tr><th>Zubringer</th><th>aktuell</th><th>r</th><th>n</th><th>erwartet 7.26</th><th>Literatur</th></tr></thead><tbody>
+      ${zb.rows.map((z) => `<tr><td>${esc(z.s.name)}</td><td class="num">${z.s.dec === 2 ? f2(z.current) : fmt(z.current)} ${z.s.unit}</td><td><b>${z.r == null ? '–' : z.r.toFixed(2)}</b></td><td>${z.n}${z.n > 0 && z.n < 10 ? ' <span class="badge">vorläufig</span>' : ''}</td><td>${z.expected != null ? f2(z.expected) : '–'}</td><td class="src" style="text-align:left;min-width:12em">${esc(z.lit)}</td></tr>`).join('')}
+    </tbody></table></div>` : '<p class="muted small">Noch keine Kraft- oder Testdaten.</p>'}
+    <div class="facts">
+      <div><div class="label">Zubringer-Prognose 7.26 kg</div><span class="big num">${zb.P ? f2(zb.P) : '–'}</span> <span class="muted">m</span><div class="src">${zb.used.length ? 'gewichtet aus ' + zb.used.length + ' Zubringern (r ≥ 0.3, n ≥ 6)' : 'ab 6 gemeinsamen Wochen und |r| ≥ 0.3'}</div></div>
+      <div><div class="label">Ausnutzungskoeffizient</div><span class="big num">${ausn ? ausn.toFixed(2) : '–'}</span><div class="src">${ausn ? (ausn >= 1 ? 'Die Kondition wird technisch gut umgesetzt.' : 'Die Weite liegt unter dem, was die Zubringer erwarten lassen.') : 'geworfene 7.26-kg-Weite ÷ Zubringer-Prognose'}</div></div>
+    </div>
+    <p class="note">Korrelationen zwischen Athleten (Literatur) sagen wenig über den Einzelnen. Massgebend ist die eigene Spalte r, sobald genug Wochen vorliegen.</p>
+  </section>
+  <section class="card">
+    <h2>Kalibrierung</h2>
+    <div class="tbl"><table class="sets"><tbody>
+      <tr><td>Zusatzmasse f (Modell A)</td><td><b>${fmt(cal.f, 2)} kg</b><div class="src">Literatur 2.8 · ${esc(fitTxt)}</div></td></tr>
+      <tr><td>k (Modell B)</td><td><b>${fmt(cal.k * 100, 1)} % pro kg</b><div class="src">Literatur 10 %${cal.kObs != null ? ' · eigene Beobachtung ' + fmt(cal.kObs * 100, 1) + ' %' : ''}</div></td></tr>
+      <tr><td>Tagesform σ0</td><td><b>${fmt(cal.sigma0 * 100, 1)} %</b><div class="src">${cal.nPairs >= 8 ? 'aus eigenen Residuen' : 'Startwert, eigene Schätzung ab 8 Paaren'}</div></td></tr>
+      ${wfs.length ? wfs.map(([k, w]) => { const [m, wire] = k.split('|'); return `<tr><td>Drahtfaktor ${massLabel(Number(m))} · ${esc(wireLabel(wire))}</td><td><b>× ${fmt(w.factor, 3)}</b><div class="src">${w.n} Einheit${w.n === 1 ? '' : 'en'} · ${w.active ? 'aktiv' : 'aktiv ab 3 Einheiten'}</div></td></tr>`; }).join('')
+        : '<tr><td>Drahtfaktoren</td><td><div class="src">Kurzdrahtwürfe zählen erst, wenn dasselbe Gewicht an mindestens 3 Tagen mit Normal- und Kurzdraht geworfen wurde.</div></td></tr>'}
+    </tbody></table></div>
+  </section>
+  <section class="card">
+    <details><summary>Literaturformel Bakarynov (1997)</summary>
+      <p class="note">Regression aus 82 sowjetischen Hammerwerfern (NSA Round Table 34). Gültig etwa ab 60 m. Die Datenqualität des Originals ist unsicher, die Koeffizienten sind einzeln nicht interpretierbar. Sie wird hier nicht berechnet, weil folgende Tests in der App nicht erfasst werden: ${esc(bk.missing.join(', '))}.</p>
+    </details>
+    <details><summary>Quellen</summary>
+      <ul class="note">
+        <li><a href="https://vsathletics.com/venue/HammerTraining.pdf" target="_blank" rel="noopener">McAtee: Hammer Training with over/under weight implements</a></li>
+        <li><a href="https://tbojalad.github.io/throw-calc/" target="_blank" rel="noopener">throw-calc: Implement Conversion</a></li>
+        <li><a href="https://mcthrows.com/?paged=27" target="_blank" rel="noopener">McQuaid, mcthrows.com</a></li>
+        <li><a href="https://worldathletics.org/download/downloadnsa?filename=f23ea89d-4acb-4f99-a9e7-473e3b4cf968.pdf&amp;urlslug=nsa-round-table-34-hammer-throw" target="_blank" rel="noopener">NSA Round Table 34: Hammer Throw (Bakarynov, Szabó)</a></li>
+        <li><a href="https://www.jssm.org/volume09/iss1/cap/jssm-09-104.pdf" target="_blank" rel="noopener">Terzis et al. 2010, JSSM</a></li>
+        <li><a href="https://doi.org/10.55860/p3jhhb27" target="_blank" rel="noopener">Maeda et al. 2024, JHSE</a></li>
+        <li><a href="https://jtsstrength.com/?p=2771" target="_blank" rel="noopener">Bondartschuk: Transfer of Training (Sekundärquelle)</a></li>
+        <li><a href="https://muni.cz/en/research/publications/1322661" target="_blank" rel="noopener">Králová, Vanderka, Cacek 2015</a></li>
+      </ul>
+    </details>
+    <p class="note">Alle Literaturwerte sind Faustregeln. Die App startet mit ihnen und passt sie mit deinen eigenen Daten an. Modell A ist eine physikalisch motivierte Vereinfachung, kein direkt aus einer Studie übernommenes Modell.</p>
+  </section>`;
+}
+
+function renderCompare() {
+  const pd = progData();
+  const cat = seriesCatalog(pd);
+  if (!cat.length) return `<div class="card empty"><h2>Noch nichts zu vergleichen</h2><p class="muted small">Sobald Kraft-, Wurf- oder Testwerte erfasst sind, kannst du hier bis zu vier Reihen übereinanderlegen.</p></div>`;
+  if (!ui.cmp) {
+    ui.cmp = [];
+    for (const k of ['prog', 'w:7.26|normal']) if (cat.some((s) => s.key === k)) ui.cmp.push(k);
+    const firstK = cat.find((s) => s.kind === 'kraft'); if (firstK) ui.cmp.push(firstK.key);
+    const firstT = cat.find((s) => s.kind === 'test'); if (firstT && ui.cmp.length < 4) ui.cmp.push(firstT.key);
+  }
+  ui.cmp = ui.cmp.filter((k) => cat.some((s) => s.key === k));
+  const sel = ui.cmp.map((k) => cat.find((s) => s.key === k));
+  const nowW = C.isoWeek(pd.today).index;
+  const firstIdx = Math.min(...cat.flatMap((s) => [...s.map.keys()]));
+  const fromIdx = rangeFrom(firstIdx);
+  const norm = (s, v, v0) => {
+    const ref = ui.cmpNorm === 'pb' ? s.pb : v0;
+    if (!(ref > 0) || !(v > 0)) return null;
+    return s.lowerBetter ? ref / v * 100 : v / ref * 100;
+  };
+  const series = sel.map((s) => {
+    const pts = [...s.map.entries()].filter(([x]) => x >= fromIdx).sort((a, b) => a[0] - b[0]);
+    const v0 = pts.length ? pts[0][1] : null;
+    return { name: s.name, s, points: pts.map(([x, v]) => ({ x, y: norm(s, v, v0), raw: v, title: `KW ${C.isoWeek(C.toIso(x * 7 * DAYMS)).week}: ${s.dec === 2 ? f2(v) : fmt(v)} ${s.unit}` })).filter((p) => p.y != null) };
+  });
+  pendingExtra = () => drawMultiChart($('#chart'), { from: fromIdx, to: nowW, series });
+  const group = (kind, title) => {
+    const items = cat.filter((s) => s.kind === kind || (kind === 'wurf' && s.kind === 'prog'));
+    if (!items.length) return '';
+    return `<div class="label">${title}</div><div class="chips wrapchips">${items.map((s) => { const i = ui.cmp.indexOf(s.key); return `<button class="chip ${i >= 0 ? 'c' + (i + 1) : ''}" data-act="cmpToggle" data-k="${esc(s.key)}" aria-pressed="${i >= 0}">${esc(s.name)}</button>`; }).join('')}</div>`;
+  };
+  return `
+  <section class="card">
+    ${group('wurf', 'Wurf')}${group('kraft', 'Kraft')}${group('test', 'Tests')}
+    <p class="note">Bis zu vier Reihen. Alle Werte sind in Prozent umgerechnet, damit kg, m und s auf einer Achse vergleichbar sind. Beim Sprint ist schneller = höher.</p>
+  </section>
+  <section class="card">
+    <div class="row"><div class="seg" role="group" aria-label="Bezug">
+      <button data-act="cmpNorm" data-n="pb" aria-pressed="${ui.cmpNorm === 'pb'}">% der Bestleistung</button>
+      <button data-act="cmpNorm" data-n="start" aria-pressed="${ui.cmpNorm === 'start'}">Start = 100</button></div>
+      <span class="grow"></span>${rangeSeg()}</div>
+    <div id="chart" class="chart"></div>
+    <div class="legend">${series.map((s, i) => `<span><i class="c${i + 1}"></i>${esc(s.name)}</span>`).join('')}</div>
+    ${series.length ? `<div class="tbl"><table class="sets"><thead><tr><th>Reihe</th><th>Bestleistung</th><th>Zuletzt</th><th>%</th></tr></thead><tbody>
+      ${series.map((s) => { const last = s.points[s.points.length - 1]; const d = s.s.dec === 2 ? f2 : (v) => fmt(v); return `<tr><td>${esc(s.name)}</td><td>${s.s.pb ? d(s.s.pb) + ' ' + s.s.unit : '–'}</td><td>${last ? d(last.raw) + ' ' + s.s.unit : '–'}</td><td><b>${last ? fmt(last.y, 1) : '–'}</b></td></tr>`; }).join('')}
+    </tbody></table></div>` : ''}
+  </section>`;
+}
+
+// ================= Diagramm (gemeinsam) =================
+let pendingChart = null, shownChart = null, pendingExtra = null, shownExtra = null;
+function drawLineChart(host, o) {
+  if (!host || !o) return;
+  const series = o.series, marks = o.marks || [], tr = o.trend, dec = o.dec ?? 1;
+  const W = Math.max(280, host.clientWidth || 320), H = Math.round(Math.min(280, Math.max(190, W * 0.55)));
+  const pad = { l: 44, r: 14, t: 16, b: 26 };
+  if (!series.length && !marks.length) {
+    host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Noch keine Daten"><rect x="0" y="0" width="${W}" height="${H}" rx="8" fill="var(--bg)"/><text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="var(--muted)" font-size="13">Noch keine Werte im Zeitraum</text></svg>`;
+    return;
+  }
+  const xs = series.map((p) => p.x).concat(marks.map((p) => p.x));
+  const x0 = Math.min(o.from, ...xs), x1 = Math.max(o.to, x0 + 1);
+  const ys = series.map((p) => p.y).concat(marks.map((p) => p.y));
+  if (tr) ys.push(tr.intercept + tr.slope * tr.x0, tr.intercept + tr.slope * tr.x1);
+  if (o.refLine) ys.push(o.refLine.y);
+  const band = (o.band || []).filter((b) => b.lo != null && b.hi != null);
+  for (const b of band) ys.push(b.lo, b.hi);
+  let lo = Math.min(...ys), hi = Math.max(...ys);
+  const span = Math.max(hi - lo, o.minSpan || 1); const mid = (hi + lo) / 2;
+  lo = Math.min(lo, mid - span / 2) - span * 0.12; hi = Math.max(hi, mid + span / 2) + span * 0.12;
+  const step = [0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50].find((s) => (hi - lo) / s <= 5) || 100;
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const sx = (x) => pad.l + (x - x0) / (x1 - x0) * (W - pad.l - pad.r);
+  const sy = (y) => pad.t + (hi - y) / (hi - lo) * (H - pad.t - pad.b);
+  let g = '';
+  for (let i = 0; lo + i * step <= hi + 1e-9; i++) {
+    const v = lo + i * step;
+    g += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--line)" stroke-width="1"/><text x="${pad.l - 6}" y="${sy(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt(v, 2)}</text>`;
+  }
+  const n = x1 - x0; const every = Math.max(1, Math.ceil(n / Math.floor((W - pad.l) / 46)));
+  for (let x = x1; x >= x0; x -= every) { const wk = C.isoWeek(C.toIso(x * 7 * 86400000)).week; g += `<text x="${sx(x)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">KW${wk}</text>`; }
+  const bandPath = band.length > 1 ? `<path d="M${band.map((b) => sx(b.x) + ',' + sy(b.hi)).join(' L')} L${band.slice().reverse().map((b) => sx(b.x) + ',' + sy(b.lo)).join(' L')}Z" fill="var(--accent)" fill-opacity=".14"/>` : '';
+  const refL = o.refLine ? `<line x1="${pad.l}" x2="${W - pad.r}" y1="${sy(o.refLine.y)}" y2="${sy(o.refLine.y)}" stroke="var(--test)" stroke-width="1.5" stroke-dasharray="2 4"/><text x="${pad.l + 4}" y="${sy(o.refLine.y) - 5}" font-size="11" fill="var(--test)">${esc(o.refLine.label)} ${dec === 2 ? f2(o.refLine.y) : fmt(o.refLine.y, dec)}</text>` : '';
+  const area = band.length ? '' : series.length > 1 ? `<path d="M${sx(series[0].x)},${sy(lo)} ${series.map((p) => 'L' + sx(p.x) + ',' + sy(p.y)).join(' ')} L${sx(series[series.length - 1].x)},${sy(lo)}Z" fill="var(--accent)" fill-opacity=".08"/>` : '';
+  const line = series.length > 1 ? `<polyline points="${series.map((p) => sx(p.x) + ',' + sy(p.y)).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>` : '';
+  const dots = series.map((p, i) => `<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="${i === series.length - 1 ? 5 : 3.5}" fill="${i === series.length - 1 ? 'var(--accent)' : 'var(--surface)'}" stroke="var(--accent)" stroke-width="2"><title>${esc(p.title || '')}</title></circle>`).join('');
+  const endLbl = series.length ? (() => { const p = series[series.length - 1]; const tx = Math.min(sx(p.x), W - pad.r - 4); return `<text x="${tx}" y="${sy(p.y) - 10}" text-anchor="end" font-size="12" font-weight="600" fill="var(--ink)">${dec === 2 ? f2(p.y) : fmt(p.y, dec)}</text>`; })() : '';
+  const mdots = marks.map((p) => { const cx = sx(p.x), cy = sy(p.y); return `<path d="M${cx},${cy - 6} L${cx + 6},${cy} L${cx},${cy + 6} L${cx - 6},${cy}Z" fill="var(--test)"><title>${esc(p.title || '')}</title></path>`; }).join('');
+  const tl = tr ? `<line x1="${sx(tr.x0)}" y1="${sy(tr.intercept + tr.slope * tr.x0)}" x2="${sx(tr.x1)}" y2="${sy(tr.intercept + tr.slope * tr.x1)}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>` : '';
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Wochenkurve ${esc(o.label || '')}">${g}${bandPath}${area}${refL}${tl}${line}${dots}${mdots}${endLbl}</svg>`;
+}
+
+/** Mehrere Reihen auf einer Achse (Vergleich, normiert in %). */
+const SERIES_COLORS = ['var(--accent)', 'var(--test)', 'var(--good)', 'var(--warn)'];
+function drawMultiChart(host, o) {
+  if (!host) return;
+  const all = o.series.flatMap((s) => s.points);
+  const W = Math.max(280, host.clientWidth || 320), H = Math.round(Math.min(300, Math.max(200, W * 0.6)));
+  const pad = { l: 40, r: 14, t: 14, b: 26 };
+  if (!all.length) { host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Noch keine Daten"><rect x="0" y="0" width="${W}" height="${H}" rx="8" fill="var(--bg)"/><text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="var(--muted)" font-size="13">Wähle oben Reihen mit Werten im Zeitraum</text></svg>`; return; }
+  const x0 = Math.min(o.from, ...all.map((p) => p.x)), x1 = Math.max(o.to, x0 + 1);
+  let lo = Math.min(100, ...all.map((p) => p.y)), hi = Math.max(100, ...all.map((p) => p.y));
+  const span = Math.max(hi - lo, 10); lo -= span * 0.1; hi += span * 0.1;
+  const step = [1, 2, 5, 10, 20, 25, 50].find((s) => (hi - lo) / s <= 6) || 100;
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const sx = (x) => pad.l + (x - x0) / (x1 - x0) * (W - pad.l - pad.r);
+  const sy = (y) => pad.t + (hi - y) / (hi - lo) * (H - pad.t - pad.b);
+  let g = '';
+  for (let i = 0; lo + i * step <= hi + 1e-9; i++) { const v = lo + i * step; g += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--line)" stroke-width="${v === 100 ? 1.5 : 1}"/><text x="${pad.l - 6}" y="${sy(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt(v, 0)}</text>`; }
+  const n = x1 - x0; const every = Math.max(1, Math.ceil(n / Math.floor((W - pad.l) / 46)));
+  for (let x = x1; x >= x0; x -= every) g += `<text x="${sx(x)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">KW${C.isoWeek(C.toIso(x * 7 * 86400000)).week}</text>`;
+  const lines = o.series.map((s, i) => {
+    const col = SERIES_COLORS[i % 4];
+    const pl = s.points.length > 1 ? `<polyline points="${s.points.map((p) => sx(p.x) + ',' + sy(p.y)).join(' ')}" fill="none" stroke="${col}" stroke-width="2.25" stroke-linejoin="round"/>` : '';
+    return pl + s.points.map((p) => `<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="3.5" fill="var(--surface)" stroke="${col}" stroke-width="2"><title>${esc(s.name)} · ${esc(p.title)}</title></circle>`).join('');
+  }).join('');
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Vergleich">${g}${lines}</svg>`;
+}
+
+/** Äquivalenzkurve: Bestweite je Hammergewicht (x) mit Modell-A-Kurve. */
+function drawEquivChart(host, o) {
+  if (!host) return;
+  const W = Math.max(280, host.clientWidth || 320), H = Math.round(Math.min(280, Math.max(190, W * 0.55)));
+  const pad = { l: 40, r: 14, t: 14, b: 30 };
+  const ys = o.points.map((p) => p.y).concat(o.curve.map((p) => p.y));
+  if (!o.points.length) { host.innerHTML = ''; return; }
+  let lo = Math.min(...ys), hi = Math.max(...ys); const span = Math.max(hi - lo, 5); lo -= span * 0.1; hi += span * 0.1;
+  const step = [1, 2, 5, 10, 20].find((s) => (hi - lo) / s <= 5) || 50;
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const mx0 = 4.5, mx1 = 12.5;
+  const sx = (x) => pad.l + (x - mx0) / (mx1 - mx0) * (W - pad.l - pad.r);
+  const sy = (y) => pad.t + (hi - y) / (hi - lo) * (H - pad.t - pad.b);
+  let g = '';
+  for (let i = 0; lo + i * step <= hi + 1e-9; i++) { const v = lo + i * step; g += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--line)"/><text x="${pad.l - 6}" y="${sy(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`; }
+  for (const m of [5, 6, 7.26, 8, 9, 10, 11, 12]) g += `<text x="${sx(m)}" y="${H - 10}" text-anchor="middle" font-size="11" fill="${m === 7.26 ? 'var(--ink)' : 'var(--muted)'}">${m}</text>`;
+  g += `<line x1="${sx(7.26)}" x2="${sx(7.26)}" y1="${pad.t}" y2="${H - pad.b}" stroke="var(--muted)" stroke-dasharray="3 4"/>`;
+  const curve = o.curve.length ? `<polyline points="${o.curve.map((p) => sx(p.x) + ',' + sy(p.y)).join(' ')}" fill="none" stroke="var(--muted)" stroke-width="1.75" stroke-dasharray="6 4"/>` : '';
+  const pts = o.points.map((p) => `<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="5" fill="${p.x === 7.26 ? 'var(--test)' : 'var(--accent)'}"><title>${massLabel(p.x)}: ${f2(p.y)} m</title></circle><text x="${sx(p.x)}" y="${sy(p.y) - 9}" text-anchor="middle" font-size="11" fill="var(--ink)">${fmt(p.y, 1)}</text>`).join('');
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Äquivalenzkurve Hammergewichte">${g}${curve}${pts}</svg>`;
+}
+
+// ================= DATEN =================
+function renderData() {
+  const res = C.selfTest(); const ok = res.every((r) => r.pass);
+  const hres = HM.selfTest();
+  return `<section class="card">
+    <h2>Sichern</h2>
+    <p class="small muted">${S.mode === 'remote' ? 'Deine Einträge liegen privat in deinem claude.ai-Konto und sind auf jedem Gerät gleich, auf dem du angemeldet bist.'
+      : sbUser ? 'Deine Einträge liegen in deinem Konto (' + esc(sbUser.email || '') + ') und werden zwischen deinen Geräten abgeglichen. Ohne Internet wird zuerst auf dem Gerät gespeichert und später übertragen.'
+      : 'Deine Einträge liegen nur in diesem Browser. Exportiere regelmässig.'}
+      Kraft: ${S.sets.length} Sätze, ${S.tests.length} Test-1RM · Wurf: ${S.throws.length} Weiten · Tests: ${S.results.length} Resultate.</p>
+    <div class="row"><button class="btn primary" data-act="exportJson">Backup (JSON)</button></div>
+    <div class="row"><button class="btn sm" data-act="exportCsv" data-k="sets">Kraft (CSV)</button><button class="btn sm" data-act="exportCsv" data-k="throws">Wurf (CSV)</button><button class="btn sm" data-act="exportCsv" data-k="results">Tests (CSV)</button></div>
+    ${ui.exportText ? `<label class="small muted" for="out">Download nicht verfügbar – Text kopieren und als Datei sichern:</label><textarea id="out" class="out" readonly>${esc(ui.exportText)}</textarea><button class="btn sm" data-act="copyOut">Kopieren</button>` : ''}
+  </section>
+  ${sbUser ? `<section class="card">
+    <h2>Konto</h2>
+    <p class="small muted">Angemeldet als ${esc(sbUser.email || '')}. ${sbQueue.length ? sbQueue.length + ' Änderungen warten auf die Übertragung.' : 'Alles übertragen.'}</p>
+    <div class="row"><button class="btn sm" data-act="syncNow">Jetzt synchronisieren</button><button class="btn ghost sm" data-act="logout">Abmelden</button></div>
+  </section>` : ''}
+  <section class="card">
+    <h2>Wiederherstellen</h2>
+    <p class="small muted">JSON-Backup einlesen. Vorhandene Einträge mit derselben ID werden überschrieben, nichts wird gelöscht.</p>
+    <input type="file" id="importFile" accept=".json,application/json">
+    ${ui.importMsg ? `<p class="small">${esc(ui.importMsg)}</p>` : ''}
+  </section>
+  <section class="card">
+    <h2>Saison</h2>
+    <label class="small muted" for="season">Saisonstart für den Zeitraum «Saison» in allen Verläufen</label>
+    <input type="date" id="season" value="${esc(S.profile.seasonStart || defaultSeasonStart())}">
+  </section>
+  <section class="card">
+    <h2>Rechenprüfung Kraft</h2>
+    <p class="small ${ok ? 'ok' : 'err'}">${ok ? 'Alle 6 Testfälle aus der Spezifikation bestehen.' : 'Mindestens ein Testfall schlägt fehl.'} Formel: Epley, Schätzung bis 10 effektive Wdh.</p>
+    <div class="tbl"><table class="sets small"><tbody>${res.map((r) => `<tr><td>${esc(r.name)}</td><td>${r.got == null ? '–' : r.got}</td><td class="${r.pass ? 'ok' : 'err'}">${r.pass ? '✓' : '✗'}</td></tr>`).join('')}</tbody></table></div>
+  </section>
+  <section class="card">
+    <h2>Rechenprüfung Prognose</h2>
+    <p class="small ${hres.every((r) => r.pass) ? 'ok' : 'err'}">${hres.every((r) => r.pass) ? 'Alle ' + hres.length + ' Testfälle aus der Prognose-Spezifikation bestehen.' : 'Mindestens ein Testfall schlägt fehl.'}</p>
+    <div class="tbl"><table class="sets small"><tbody>${hres.map((r) => `<tr><td>${esc(r.name)}</td><td>${r.got == null ? '–' : r.got}</td><td class="${r.pass ? 'ok' : 'err'}">${r.pass ? '✓' : '✗'}</td></tr>`).join('')}</tbody></table></div>
+  </section>`;
+}
+
+function csvOf(head, rows) {
+  const q = (v) => { const s = String(v ?? ''); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  return '﻿' + head.join(';') + '\n' + rows.map((r) => r.map(q).join(';')).join('\n');
+}
+function buildCsv(kind) {
+  if (kind === 'throws') {
+    return csvOf(['Datum', 'KW', 'Hammer_kg', 'Draht', 'Weite_m', 'Wettkampf', 'Notiz'],
+      S.throws.slice().sort((a, b) => -byDateDesc(a, b)).map((t) => [t.date, C.isoWeek(t.date).week, t.massKg, wireLabel(t.wire), f2(t.distanceM), t.isCompetition ? 'ja' : 'nein', t.note || '']));
+  }
+  if (kind === 'results') {
+    return csvOf(['Datum', 'KW', 'Test', 'Kugel_kg', 'Resultat', 'Einheit', 'Notiz'],
+      S.results.slice().sort((a, b) => -byDateDesc(a, b)).map((r) => { const t = testDef(r.testId) || {}; return [r.date, C.isoWeek(r.date).week, t.name || r.testId, r.shotKg || '', f2(r.value), t.unit || '', r.note || '']; }));
+  }
+  return csvOf(['Datum', 'KW', 'Übung', 'kg', 'Wdh', 'RIR', 'e1RM', 'Prozent_1RM', 'Notiz'],
+    S.sets.slice().sort((a, b) => a.date.localeCompare(b.date) || (a.order ?? 0) - (b.order ?? 0)).map((s) => {
+      const ex = exById(s.exerciseId) || { id: s.exerciseId, name: '?', mode: 'load_only' };
+      const e = C.setE1rm(s, ex);
+      const p = C.pct(s.weightKg, C.refMax(ex, s.date, S.sets.filter((x) => x.exerciseId === ex.id), S.tests, baselineVal(blId.kraft(ex.id))));
+      return [s.date, C.isoWeek(s.date).week, ex.name, s.weightKg, s.reps, s.rir ?? '', e == null ? '' : C.round1(e), p ?? '', s.note || ''];
+    }));
+}
+
+async function offerFile(filename, data) {
+  let dl = null;
+  try { dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { dl = null; }
+  if (dl) {
+    try { await dl.save({ filename, data }); toast('Datei gespeichert'); ui.exportText = ''; return; }
+    catch (e) { if (e && e.code === 'declined') return; if (e && e.code === 'rate_limited') { toast('Bitte kurz warten und erneut versuchen'); return; } }
+  }
+  ui.exportText = data; render();
+}
+
+async function importJson(text) {
+  let d;
+  try { d = JSON.parse(text); } catch (e) { ui.importMsg = 'Die Datei ist kein gültiges JSON.'; render(); return; }
+  if (!d || !KINDS.some((k) => Array.isArray(d[k]))) { ui.importMsg = 'Kein Backup dieser App: keine Übungen, Sätze, Würfe oder Tests gefunden.'; render(); return; }
+  let n = 0;
+  ui.importMsg = 'Wird eingelesen …'; render();
+  try {
+    for (const k of KINDS) {
+      for (const o of d[k] || []) {
+        if (!o || !o.id) continue;
+        const obj = { ...o, athleteId: o.athleteId || S.athleteId };
+        if (backend) await backend.put(k, obj);
+        const i = S[k].findIndex((x) => x.id === obj.id); if (i >= 0) S[k][i] = obj; else S[k].push(obj);
+        n++;
+      }
+    }
+    if (d.profile && typeof d.profile === 'object') await saveProfile(d.profile);
+    if (!remote) localSave();
+    ui.importMsg = n + ' Einträge wiederhergestellt.';
+  } catch (e) { ui.importMsg = 'Abgebrochen nach ' + n + ' Einträgen. Bitte nochmals einlesen.'; }
+  render();
+}
+
+// ================= Rendern & Ereignisse =================
+function render() {
+  const sec = SECTIONS[ui.section];
+  $('#h1').textContent = sec.title;
+  document.querySelectorAll('.sect button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.sec === ui.section)));
+  $('#gear').setAttribute('aria-pressed', String(ui.section === 'data'));
+  const nav = $('#tabs');
+  nav.hidden = !sec.tabs.length;
+  nav.innerHTML = sec.tabs.map(([k, l]) => `<button data-tab="${k}" aria-current="${curTab() === k ? 'page' : 'false'}">${l}</button>`).join('');
+
+  const login = S.mode === 'login';
+  $('.sect').hidden = login; $('#gear').hidden = login;
+  if (login) { nav.hidden = true; $('#h1').textContent = 'LCB Training'; $('#view').innerHTML = renderLogin(); return; }
+  const focusId = document.activeElement && document.activeElement.id;
+  const v = $('#view');
+  pendingChart = null; pendingExtra = null;
+  if (S.mode === 'loading' && !allLoaded() && !S.exercises.length && !S.throws.length && !S.results.length) { v.innerHTML = `<div class="card empty"><p class="muted">Daten werden geladen …</p></div>`; return; }
+  const t = curTab();
+  if (ui.section === 'kraft') {
+    if (t === 'capture') { v.innerHTML = renderCapture(); if ($('#quick')) refreshCapture(); }
+    else if (t === 'history') v.innerHTML = renderHistory();
+    else if (t === 'best') v.innerHTML = renderKraftBest();
+    else v.innerHTML = renderExercises();
+  } else if (ui.section === 'wurf') v.innerHTML = t === 'history' ? renderWurfHistory() : t === 'best' ? renderWurfBest() : renderWurfCapture();
+  else if (ui.section === 'tests') v.innerHTML = t === 'history' ? renderTestsHistory() : t === 'best' ? renderTestsBest() : renderTestsCapture();
+  else if (ui.section === 'prog') v.innerHTML = t === 'compare' ? renderCompare() : renderForecast();
+  else v.innerHTML = renderData();
+  shownChart = pendingChart; shownExtra = pendingExtra;
+  if (pendingChart) drawLineChart($('#chart'), pendingChart);
+  if (pendingExtra) pendingExtra();
+  if (focusId && /^(dist|tval|bl-)/.test(focusId)) { const el = document.getElementById(focusId); if (el) { el.focus(); const l = el.value.length; try { el.setSelectionRange(l, l); } catch (e) { /* egal */ } } }
+}
+
+function go(section, tab) {
+  ui.section = section; if (tab) ui.tabs[section] = tab;
+  ui.confirmDel = null; ui.editSet = null; ui.editRow = null;
+  saveNav(); render(); window.scrollTo(0, 0);
+}
+document.querySelector('.sect').addEventListener('click', (e) => { const b = e.target.closest('button[data-sec]'); if (b) go(b.dataset.sec); });
+$('#gear').addEventListener('click', () => go(ui.section === 'data' ? (ui.prevSection || 'kraft') : (ui.prevSection = ui.section, 'data')));
+$('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) go(ui.section, b.dataset.tab); });
+
+const view = $('#view');
+view.addEventListener('input', (e) => {
+  const id = e.target.id;
+  if (id === 'quick') { ui.quick = e.target.value; renderPreview(); renderRefBox(); }
+  else if (id === 'dist') ui.dist = e.target.value;
+  else if (id === 'tval') ui.tval = e.target.value;
+});
+view.addEventListener('change', async (e) => {
+  const t = e.target;
+  if (t.dataset && t.dataset.bl) { await saveBaseline(t); return; }
+  if (t.id === 'date' && t.value) { ui.date = t.value; ui.editSet = null; ui.editRow = null; render(); }
+  else if (t.id === 'histEx') { ui.histEx = t.value; render(); }
+  else if (t.id === 'wire') { ui.wire = t.value; render(); }
+  else if (t.id === 'comp') ui.comp = t.checked;
+  else if (t.id === 'shot') { ui.shot = Number(t.value); render(); }
+  else if (t.id === 'histResult') { ui.histResult = t.value; ui.editRow = null; render(); }
+  else if (t.id === 'season' && t.value) { await saveProfile({ seasonStart: t.value }); toast('Saisonstart gespeichert'); }
+  else if (t.id === 'importFile' && t.files && t.files[0]) { const r = new FileReader(); r.onload = () => importJson(String(r.result)); r.readAsText(t.files[0]); }
+});
+view.addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (e.target.id === 'qform') saveQuick();
+  else if (e.target.id === 'wform') saveThrow();
+  else if (e.target.id === 'tform') saveResult();
+  else if (e.target.id === 'lform') sbLogin(false);
+});
+view.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('tr.click')) e.target.click(); });
+
+view.addEventListener('click', async (e) => {
+  const key = e.target.closest('[data-key]');
+  if (key) {
+    const q = $('#quick'); const k = key.dataset.key;
+    q.value = k === 'back' ? q.value.slice(0, -1) : q.value + k;
+    ui.quick = q.value; renderPreview(); renderRefBox(); q.focus(); return;
+  }
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  const act = a.dataset.act, id = a.dataset.id;
+  if (act !== 'delSet' && act !== 'delTest' && act !== 'delRow') ui.confirmDel = null;
+  switch (act) {
+    case 'seed': {
+      a.disabled = true;
+      for (const [name, mode, unilateral, loadNote] of DEFAULT_EXERCISES) {
+        const ex = { id: uid(), name, mode, unilateral, increment: 2.5, archived: false };
+        if (loadNote) ex.loadNote = loadNote;
+        try { await put('exercises', ex); } catch (err) { a.disabled = false; return; }
+      }
+      toast('12 Übungen angelegt'); render(); break;
+    }
+    case 'day': ui.date = C.addDays(ui.date, Number(a.dataset.d)); ui.editSet = null; ui.editRow = null; render(); break;
+    case 'pickEx': ui.exId = id; ui.showTest = false; refreshCapture(); $('#quick').focus(); break;
+    case 'fill': { const q = $('#quick'); q.value = a.dataset.v; ui.quick = q.value; renderPreview(); renderRefBox(); q.focus(); break; }
+    case 'editSet': ui.editSet = id; renderDayList(); break;
+    case 'cancelEdit': ui.editSet = null; renderDayList(); break;
+    case 'saveSet': {
+      const s = S.sets.find((x) => x.id === id); if (!s) break;
+      const w = num($('#e-w').value), r = Number($('#e-r').value), rirRaw = $('#e-rir').value;
+      if (!(w > 0) || !(r >= 1 && r <= 50)) { toast('Gewicht und Wdh prüfen'); break; }
+      const rir = rirRaw === '' ? null : Number(rirRaw);
+      if (rir != null && !(rir >= 0 && rir <= 5)) { toast('RIR muss zwischen 0 und 5 liegen'); break; }
+      const o = { ...s, weightKg: w, reps: r }; if (rir == null) delete o.rir; else o.rir = rir;
+      ui.editSet = null;
+      try { await put('sets', o); toast('Satz geändert'); } catch (err) { /* Meldung kam schon */ }
+      refreshCapture(); break;
+    }
+    case 'delSet':
+    case 'delTest': {
+      if (ui.confirmDel !== id) { ui.confirmDel = id; ui.section === 'kraft' && curTab() === 'capture' ? renderDayList() : render(); break; }
+      ui.confirmDel = null; ui.editSet = null;
+      try { await del(act === 'delSet' ? 'sets' : 'tests', id); toast('Gelöscht'); } catch (err) { /* Meldung kam schon */ }
+      ui.section === 'kraft' && curTab() === 'capture' ? refreshCapture() : render(); break;
+    }
+    case 'toggleTest': ui.showTest = !ui.showTest; renderTestForm(); break;
+    case 'saveTest': {
+      const ex = currentEx(); const w = num($('#t-w').value);
+      if (!ex || !(w > 0 && w <= 500)) { toast('Bitte ein Gewicht in kg eingeben'); break; }
+      const note = $('#t-note').value.trim();
+      const t = { id: uid(), athleteId: S.athleteId, date: ui.date, exerciseId: ex.id, weightKg: w }; if (note) t.note = note;
+      ui.showTest = false;
+      try { await put('tests', t); toast('Test-1RM gespeichert'); } catch (err) { /* Meldung kam schon */ }
+      refreshCapture(); break;
+    }
+    case 'range': ui.range = a.dataset.r; render(); break;
+    case 'newEx': ui.newEx = true; ui.editEx = null; render(); $('#x-name').focus(); break;
+    case 'editEx': ui.editEx = id; ui.newEx = false; render(); break;
+    case 'cancelEx': ui.editEx = null; ui.newEx = false; render(); break;
+    case 'toggleArch': ui.showArchived = !ui.showArchived; render(); break;
+    case 'saveEx': {
+      const name = $('#x-name').value.trim(); if (!name) { toast('Bitte einen Namen eingeben'); break; }
+      const inc = num($('#x-inc').value);
+      const base = id ? exById(id) : { id: uid(), archived: false };
+      const ex = { ...base, name, mode: $('#x-mode').value, unilateral: $('#x-uni').checked, increment: inc > 0 ? inc : 2.5 };
+      const note = $('#x-note').value.trim(); if (note) ex.loadNote = note; else delete ex.loadNote;
+      ui.editEx = null; ui.newEx = false;
+      try { await put('exercises', ex); toast('Übung gespeichert'); } catch (err) { /* Meldung kam schon */ }
+      render(); break;
+    }
+    case 'archEx': {
+      const ex = exById(id); if (!ex) break;
+      ui.editEx = null;
+      try { await put('exercises', { ...ex, archived: !ex.archived }); toast(ex.archived ? 'Wiederhergestellt' : 'Archiviert'); } catch (err) { /* Meldung kam schon */ }
+      render(); break;
+    }
+    // Wurf / Tests
+    case 'pickMass': ui.mass = Number(a.dataset.m); ui.wire = defaultWire(ui.mass); render(); $('#dist').focus(); break;
+    case 'pickTestId': ui.testId = id; if (testDef(id).shot) ui.shot = defaultShot(id); ui.tval = ''; render(); $('#tval').focus(); break;
+    case 'pickCombo': ui.histCombo = a.dataset.k; ui.editRow = null; render(); break;
+    case 'editRow': ui.editRow = id; render(); break;
+    case 'cancelRow': ui.editRow = null; render(); break;
+    case 'saveRow': {
+      const kind = a.dataset.kind; const o = S[kind].find((x) => x.id === id); if (!o) break;
+      const v = num($('#er-v').value); const note = $('#er-note').value.trim();
+      const n = { ...o };
+      if (kind === 'throws') {
+        if (!(v >= 5 && v <= 100)) { toast('Bitte eine Weite zwischen 5 und 100 m eingeben'); break; }
+        n.distanceM = Math.round(v * 100) / 100; n.isCompetition = $('#er-comp').checked;
+      } else {
+        const t = testDef(o.testId);
+        if (!(v >= t.min && v <= t.max)) { toast(`Bitte einen Wert zwischen ${t.min} und ${t.max} ${t.unit} eingeben`); break; }
+        n.value = Math.round(v * 100) / 100;
+      }
+      if (note) n.note = note; else delete n.note;
+      ui.editRow = null;
+      try { await put(kind, n); toast('Geändert'); } catch (err) { /* Meldung kam schon */ }
+      render(); break;
+    }
+    case 'delRow': {
+      if (ui.confirmDel !== id) { ui.confirmDel = id; render(); break; }
+      ui.confirmDel = null; ui.editRow = null;
+      try { await del(a.dataset.kind, id); toast('Gelöscht'); } catch (err) { /* Meldung kam schon */ }
+      render(); break;
+    }
+    case 'addBlCombo': {
+      const k = comboKey(Number($('#bl-mass').value), $('#bl-wire').value);
+      if (!ui.blCombos.includes(k)) ui.blCombos.push(k);
+      render(); const el = document.getElementById('bl-' + blId.wurf(Number($('#bl-mass').value), $('#bl-wire').value)); if (el) el.focus();
+      break;
+    }
+    // Prognose / Vergleich
+    case 'cmpToggle': {
+      const k = a.dataset.k; const i = (ui.cmp || []).indexOf(k);
+      if (i >= 0) ui.cmp.splice(i, 1);
+      else if (ui.cmp.length >= 4) { toast('Höchstens vier Reihen – zuerst eine abwählen'); break; }
+      else ui.cmp.push(k);
+      render(); break;
+    }
+    case 'cmpNorm': ui.cmpNorm = a.dataset.n; render(); break;
+    case 'signup': sbLogin(true); break;
+    case 'logout': sbLogout(); break;
+    case 'syncNow': sbSync(); break;
+    // Daten
+    case 'exportJson': {
+      const d = { app: 'kraftaufbau', version: 2, exportedAt: new Date().toISOString(), athleteId: S.athleteId, profile: S.profile };
+      for (const k of KINDS) d[k] = S[k];
+      offerFile('trainingsapp-backup-' + todayIso() + '.json', JSON.stringify(d, null, 2)); break;
+    }
+    case 'exportCsv': {
+      const k = a.dataset.k; const name = { sets: 'kraft', throws: 'wurf', results: 'tests' }[k];
+      offerFile(name + '-' + todayIso() + '.csv', buildCsv(k)); break;
+    }
+    case 'copyOut': {
+      const ta = $('#out');
+      try { await navigator.clipboard.writeText(ta.value); toast('Kopiert'); } catch (err) { ta.select(); toast('Text markiert – jetzt kopieren'); }
+      break;
+    }
+  }
+});
+
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (shownChart && $('#chart')) drawLineChart($('#chart'), shownChart); if (shownExtra) shownExtra(); }, 150); });
+
+render();
+initStore();
+</script>
+
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script>
+</body>
+</html>
