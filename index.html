@@ -409,14 +409,36 @@ async function initSupabase(cfg) {
   // Offline und abgemeldet geht nicht – sonst Login zeigen
   S.mode = 'login'; setStatus(); render();
 }
+const appUrl = () => location.origin + location.pathname;
+function loginError(error) {
+  const code = error.code || '', msg = error.message || String(error);
+  const text = code === 'invalid_credentials' || /invalid login/i.test(msg) ? 'E-Mail oder Passwort stimmt nicht.'
+    : code === 'email_not_confirmed' || /not confirmed/i.test(msg) ? 'Die E-Mail-Adresse ist noch nicht bestätigt. Öffne den Link in der Bestätigungs-E-Mail oder lass sie unten neu schicken.'
+    : code === 'user_already_exists' || /already registered/i.test(msg) ? 'Für diese E-Mail gibt es schon ein Konto. Melde dich mit «Anmelden» an.'
+    : code === 'over_email_send_rate_limit' || /rate limit/i.test(msg) ? 'Zu viele E-Mails in kurzer Zeit. Bitte in einer Stunde nochmals versuchen.'
+    : /fetch|network/i.test(msg) ? 'Keine Verbindung zum Server. Bitte Internet prüfen.'
+    : 'Das hat nicht geklappt.';
+  return text + ' (' + (code ? code + ': ' : '') + msg + ')';
+}
 async function sbLogin(signup) {
-  const email = $('#l-mail').value.trim(), password = $('#l-pw').value;
+  const email = $('#l-mail').value.trim().toLowerCase(), password = $('#l-pw').value;
+  ui.loginMail = email;
   if (!email || password.length < 8) { ui.loginMsg = 'Bitte E-Mail und ein Passwort mit mindestens 8 Zeichen eingeben.'; render(); return; }
   ui.loginMsg = signup ? 'Konto wird erstellt …' : 'Anmelden …'; render();
-  const { data, error } = signup ? await sb.auth.signUp({ email, password }) : await sb.auth.signInWithPassword({ email, password });
-  if (error) { ui.loginMsg = /invalid login/i.test(error.message) ? 'E-Mail oder Passwort stimmt nicht.' : /confirm/i.test(error.message) ? 'Bitte zuerst den Link in der Bestätigungs-E-Mail öffnen, dann hier anmelden.' : error.message; render(); return; }
-  if (!data.session) { ui.loginMsg = 'Konto erstellt. Öffne den Link in der Bestätigungs-E-Mail und melde dich danach hier an.'; render(); return; }
-  ui.loginMsg = ''; sbStart(data.session.user);
+  let res;
+  try { res = signup ? await sb.auth.signUp({ email, password, options: { emailRedirectTo: appUrl() } }) : await sb.auth.signInWithPassword({ email, password }); }
+  catch (e) { res = { error: e }; }
+  if (res.error) { ui.loginMsg = loginError(res.error); render(); return; }
+  if (!res.data.session) { ui.loginMsg = 'Konto erstellt. Öffne den Link in der Bestätigungs-E-Mail (auch im Spam-Ordner schauen) und melde dich danach hier an.'; render(); return; }
+  ui.loginMsg = ''; sbStart(res.data.session.user);
+}
+async function sbResend() {
+  const email = ($('#l-mail').value || '').trim().toLowerCase();
+  ui.loginMail = email;
+  if (!email) { ui.loginMsg = 'Bitte zuerst die E-Mail-Adresse eingeben.'; render(); return; }
+  const { error } = await sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: appUrl() } });
+  ui.loginMsg = error ? loginError(error) : 'Bestätigungs-E-Mail an ' + email + ' geschickt.';
+  render();
 }
 async function sbLogout() {
   if (sbQueue.length) { toast('Es warten noch Änderungen – erst mit Internet synchronisieren'); return; }
@@ -429,12 +451,13 @@ function renderLogin() {
     <h2>Anmelden</h2>
     <p class="note">Deine Trainingsdaten liegen in deinem Konto und sind auf iPhone und PC gleich. Melde dich einmal pro Gerät an.</p>
     <form id="lform" class="form" autocomplete="on">
-      <label>E-Mail<input type="email" id="l-mail" autocomplete="username" inputmode="email" required></label>
+      <label>E-Mail<input type="email" id="l-mail" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" value="${esc(ui.loginMail || '')}" required></label>
       <label>Passwort<input type="password" id="l-pw" autocomplete="current-password" minlength="8" required></label>
       <button class="btn primary" type="submit">Anmelden</button>
       <button class="btn ghost" type="button" data-act="signup">Neues Konto erstellen</button>
     </form>
     ${ui.loginMsg ? `<p class="small">${esc(ui.loginMsg)}</p>` : ''}
+    <button class="btn ghost sm" type="button" data-act="resend">Bestätigungs-E-Mail nochmals schicken</button>
   </section>`;
 }
 
@@ -1724,6 +1747,7 @@ view.addEventListener('click', async (e) => {
     }
     case 'cmpNorm': ui.cmpNorm = a.dataset.n; render(); break;
     case 'signup': sbLogin(true); break;
+    case 'resend': sbResend(); break;
     case 'logout': sbLogout(); break;
     case 'syncNow': sbSync(); break;
     // Daten

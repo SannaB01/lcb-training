@@ -1,5 +1,5 @@
-// Offline-Cache der App. 20261101-211645 setzt build.ps1, damit jede neue Version den Cache erneuert.
-const CACHE = 'lcb-20261101-211645';
+// Offline-Cache der App. 20261101-222500 setzt build.ps1, damit jede neue Version den Cache erneuert.
+const CACHE = 'lcb-20261101-222500';
 const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
 const SHELL = ['./', 'index.html', 'calc.js', 'hammer.js', 'config.js', 'manifest.webmanifest', 'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png', SUPABASE_JS];
 
